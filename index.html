@@ -1,0 +1,187 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Down Shooter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="decal-canvas"></canvas>
+        <canvas id="blood-canvas"></canvas>
+        <canvas id="game-canvas"></canvas>
+        <div id="game-over-screen">
+            <h1>GAME OVER</h1>
+            <button id="restart-button">Restart</button>
+        </div>
+        <div id="start-menu">
+            <h1>Stickman Joe</h1>
+            <div id="menu-buttons">
+                <button id="play-button">Play</button>
+                <button id="options-button">Options</button>
+                <button id="info-button">Info</button>
+                <button id="cheats-button">Cheats</button>
+            </div>
+        </div>
+        <div id="options-menu">
+            <h1>Options</h1>
+
+            <div class="options-container">
+                <!-- Basic Settings -->
+                <div class="options-section">
+                    <h2>Basic Settings</h2>
+                    <div class="option-item">
+                        <label for="master-volume">Master Volume</label>
+                        <input type="range" id="master-volume" min="0" max="1" step="0.01" value="1">
+                    </div>
+                    <div class="option-item">
+                        <label for="sfx-volume">SFX Volume</label>
+                        <input type="range" id="sfx-volume" min="0" max="1" step="0.01" value="1">
+                    </div>
+                    <div class="option-item">
+                        <label for="particle-limit">Particle Limit</label>
+                        <input type="range" id="particle-limit" min="50" max="1000" step="10" value="300">
+                    </div>
+                     <div class="option-item">
+                        <label for="blood-fade-rate">Blood Decal Fade Speed</label>
+                        <input type="range" id="blood-fade-rate" min="0" max="0.01" step="0.0001" value="0.002">
+                    </div>
+                    <div class="option-item">
+                        <label for="blood-color">Blood Color</label>
+                        <input type="color" id="blood-color" value="#a01010">
+                    </div>
+                </div>
+
+                <!-- Advanced Settings (Collapsible) -->
+                <div class="options-section">
+                    <h2 id="advanced-options-toggle">Advanced Settings ▼</h2>
+                    <div id="advanced-options-content">
+                         <div class="option-item">
+                            <label for="max-civilians">Max Civilians</label>
+                            <input type="range" id="max-civilians" min="10" max="200" step="5" value="50">
+                        </div>
+                         <div class="option-item">
+                            <label for="civ-spawn-interval">Civilian Spawn Interval (ms)</label>
+                            <input type="range" id="civ-spawn-interval" min="500" max="10000" step="100" value="2000">
+                        </div>
+                         <div class="option-item">
+                            <label for="money-drop-chance">Money Drop Chance</label>
+                            <input type="range" id="money-drop-chance" min="0" max="1" step="0.01" value="0.6">
+                        </div>
+                         <div class="option-item">
+                            <label for="weapon-drop-chance">Weapon Drop Chance</label>
+                            <input type="range" id="weapon-drop-chance" min="0" max="1" step="0.01" value="0.35">
+                        </div>
+                        <div class="option-item">
+                            <label for="medkit-drop-chance">Medkit Drop Chance (Cops)</label>
+                            <input type="range" id="medkit-drop-chance" min="0" max="1" step="0.01" value="0.25">
+                        </div>
+                         <div class="option-item">
+                            <label for="player-damage-mult">Player Damage Multiplier</label>
+                            <input type="range" id="player-damage-mult" min="0.1" max="5" step="0.1" value="1">
+                        </div>
+                         <div class="option-item">
+                            <label for="enemy-damage-mult">Enemy Damage Multiplier</label>
+                            <input type="range" id="enemy-damage-mult" min="0.1" max="5" step="0.1" value="1">
+                        </div>
+                         <div class="option-item">
+                            <label for="player-health-mult">Player Health Multiplier</label>
+                            <input type="range" id="player-health-mult" min="0.1" max="5" step="0.1" value="1">
+                        </div>
+                         <div class="option-item">
+                            <label for="enemy-health-mult">Enemy Health Multiplier</label>
+                            <input type="range" id="enemy-health-mult" min="0.1" max="5" step="0.1" value="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="options-buttons">
+                 <button id="back-button">Back</button>
+            </div>
+        </div>
+        <div id="info-menu">
+            <h1>Game Information</h1>
+            <div class="info-content">
+                <h2>Welcome to Stickman Joe!</h2>
+                <p>This is a chaotic top-down sandbox shooter set in a dynamic, living city. Here's what you need to know to survive and thrive:</p>
+
+                <h3>Core Gameplay</h3>
+                <ul>
+                    <li><strong>Movement:</strong> Use <strong>WASD</strong> to move. Hold <strong>SHIFT</strong> to sprint.</li>
+                    <li><strong>Aim & Shoot:</strong> Use the <strong>Mouse</strong> to aim and <strong>Left-Click</strong> to shoot.</li>
+                    <li><strong>Reload:</strong> Press <strong>R</strong> to reload your equipped weapon.</li>
+                    <li><strong>Interact:</strong> Press <strong>E</strong> to pick up items, open caches, or interact with objects.</li>
+                    <li><strong>Inventory:</strong> Press <strong>TAB</strong> to open your inventory and character status screen.</li>
+                </ul>
+
+                <h3>The World & Its Inhabitants</h3>
+                <ul>
+                    <li><strong>Civilians & Cops:</strong> The city is populated by civilians and law enforcement. They have their own routines and will react to your actions. Committing crimes will raise your <strong>Wanted Level</strong>, attracting more police and eventually elite SWAT units.</li>
+                    <li><strong>AI System:</strong> NPCs have relationships and will witness your crimes. They might flee in terror, call the police, or even attack you if provoked. Some may even grieve for their fallen friends.</li>
+                    <li><strong>Zombies:</strong> A mysterious infection is spreading. Zombies are hostile to everyone. Cops will engage them if they see them attacking anyone.</li>
+                    <li><strong>Your Safehouse:</strong> The building marked with a green 'S' is your safehouse. Interact with the sign outside to access your stash and store valuable items between runs.</li>
+                </ul>
+
+                <h3>Loot, Gear & Making Money</h3>
+                <ul>
+                    <li><strong>Weapons:</strong> Find a variety of firearms, from pistols to LMGs and even experimental launchers. Each has unique characteristics.</li>
+                    <li><strong>Attachments:</strong> The core of progression. Greatly enhance your weapons by finding and equipping attachments. Right-click a weapon in your inventory to open the modification screen. Attachments can change everything from damage and accuracy to adding strange new behaviors to your bullets.</li>
+                    <li><strong>Dead Drops:</strong> These valuable caches are scattered around the city. They come in different colors, indicating the type of loot inside:
+                        <ul>
+                            <li><strong>Green:</strong> Ammo</li>
+                            <li><strong>White:</strong> Medical Supplies</li>
+                            <li><strong>Purple:</strong> Weapon Attachments</li>
+                            <li><strong>Silver:</strong> Weapons</li>
+                            <li><strong>Gold:</strong> Rare & Experimental Gear</li>
+                        </ul>
+                    </li>
+                    <li><strong>Pickpocketing:</strong> Need some quick cash? Sneak up behind an unsuspecting civilian and press <strong>E</strong> to attempt to lift their wallet. But be warned, getting caught has consequences!</li>
+                    <li><strong>The Rival:</strong> There are whispers of another skilled operative in the city. If you make enough noise by collecting scrap metal from... specific sources, you might just attract their attention. They are extremely dangerous and well-equipped.</li>
+                </ul>
+
+                <h3>Understanding Weapon Stats</h3>
+                <div class="info-section">
+                    <p>Weapon stats are modified by attachments. Here's a quick guide to what some key stats mean:</p>
+                    <ul>
+                        <li><strong>Damage:</strong> The base damage of each bullet.</li>
+                        <li><strong>Fire Rate:</strong> The time in milliseconds between shots. A lower number means faster firing.</li>
+                        <li><strong>Recoil:</strong> How much "kick" the weapon has. Lower is better.</li>
+                        <li><strong>Accuracy:</strong> How tight the bullet spread is. Higher percentage is better.</li>
+                        <li><strong>Projectiles:</strong> How many bullets are fired per shot (primarily for shotguns).</li>
+                        <li><strong>Headshot Chance:</strong> The base probability of a shot being a critical headshot.</li>
+                        <li><strong>Knockback:</strong> The force applied to targets on hit.</li>
+                    </ul>
+                    <p>Attachments can radically alter these stats. A "Heavy Stock" might reduce recoil but slow down your fire rate. An "Extended Mag" increases your ammo capacity but might make reloading slower. Experiment to find the perfect combination!</p>
+                </div>
+                
+                <h3>A World of Attachments</h3>
+                <div class="info-section">
+                    <p>Attachments come in many types, each fitting into a specific slot on your weapon. Some are common, others are rare and powerful:</p>
+                    <ul>
+                        <li><strong>Standard Attachments:</strong> Sights, Grips, Barrels, Magazines, Stocks, and Muzzles offer predictable trade-offs to fine-tune your weapon's performance.</li>
+                        <li><strong>Ammo Types:</strong> Change the very nature of your bullets. Hollow Points deal more damage but have less range, while Armor Piercing rounds can shoot through multiple enemies.</li>
+                        <li><strong>Experimental Mods:</strong> The most powerful and unpredictable attachments. These can grant your bullets unique properties like seeking out enemies, exploding on impact, creating toxic clouds, or even bouncing off walls. Be on the lookout for these rare finds!</li>
+                    </ul>
+                </div>
+                
+                <div id="developer-note-container"></div>
+            </div>
+            <div id="info-buttons">
+                 <button id="info-back-button">Back</button>
+            </div>
+        </div>
+    </div>
+    <div id="ui-container"></div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.138.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.138.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="./options.js"></script>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

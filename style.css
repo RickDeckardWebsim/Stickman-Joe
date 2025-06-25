@@ -1,0 +1,1027 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background-color: #333;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+canvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#blood-canvas {
+    z-index: 1;
+}
+
+#decal-canvas {
+    z-index: 2;
+}
+
+#game-canvas {
+    z-index: 3;
+}
+
+#game-over-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 19;
+    font-family: sans-serif;
+}
+
+#game-over-screen h1 {
+    font-size: 50px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
+}
+
+/* --- Start Menu Styles --- */
+#start-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* @tweakable The background color and opacity of the start menu overlay. */
+    background-color: rgba(0,0,0,0.8);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20; /* Above game over, below gun mod panel */
+    font-family: 'Arial', sans-serif;
+    backdrop-filter: blur(5px);
+}
+
+#start-menu h1 {
+    /* @tweakable The font size for the main game title. */
+    font-size: 80px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    /* @tweakable The color of the main game title. */
+    color: #ffffff;
+    /* @tweakable The color and blur of the shadow behind the title. */
+    text-shadow: 0 0 20px #ff4444;
+    margin-bottom: 50px;
+}
+
+#menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#start-menu button, #options-menu button, #info-menu button {
+    padding: 15px 40px;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    /* @tweakable The background color of the menu buttons. */
+    background-color: #D32F2F;
+    /* @tweakable The border color of the menu buttons. */
+    border: 2px solid #B71C1C;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    min-width: 250px;
+    text-align: center;
+}
+
+#start-menu button:hover, #options-menu button:hover, #info-menu button:hover {
+    /* @tweakable The background color of menu buttons on hover. */
+    background-color: #E53935;
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(255, 68, 68, 0.3);
+}
+
+#start-menu #options-button, #start-menu #cheats-button, #start-menu #info-button,
+#options-menu #back-button, #info-menu #info-back-button {
+    /* @tweakable The background color of secondary menu buttons. */
+    background-color: #444;
+    /* @tweakable The border color of secondary menu buttons. */
+    border-color: #222;
+}
+
+#start-menu #options-button:hover, #start-menu #cheats-button:hover, #start-menu #info-button:hover,
+#options-menu #back-button:hover, #info-menu #info-back-button:hover {
+    /* @tweakable The hover color for secondary menu buttons. */
+    background-color: #666;
+    box-shadow: 0 8px 20px rgba(150, 150, 150, 0.3);
+}
+
+/* --- Options Menu Styles --- */
+#options-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    color: white;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 21; /* Above start menu */
+    font-family: 'Arial', sans-serif;
+    backdrop-filter: blur(5px);
+}
+
+#options-menu h1 {
+    font-size: 60px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #ffffff;
+    text-shadow: 0 0 15px #4488ff;
+    margin-bottom: 40px;
+}
+
+.options-container {
+    background-color: rgba(20, 20, 20, 0.8);
+    padding: 30px;
+    border-radius: 10px;
+    width: 80%;
+    max-width: 700px;
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #444;
+}
+
+.options-section {
+    margin-bottom: 25px;
+}
+
+.options-section h2 {
+    font-size: 22px;
+    border-bottom: 2px solid #4488ff;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    color: #eee;
+}
+
+#advanced-options-toggle {
+    cursor: pointer;
+}
+
+#advanced-options-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.option-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.option-item label {
+    flex: 1;
+}
+
+.option-item input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 8px;
+    background: #555;
+    outline: none;
+    border-radius: 4px;
+}
+
+.option-item input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #4488ff;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.option-item input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #4488ff;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+#options-buttons {
+    margin-top: 30px;
+}
+
+/* --- Info Menu Styles --- */
+#info-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    color: white;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 21; /* Same as options */
+    font-family: 'Arial', sans-serif;
+    backdrop-filter: blur(5px);
+}
+
+#info-menu h1 {
+    font-size: 60px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #ffffff;
+    text-shadow: 0 0 15px var(--info-glow-color, #ffff00);
+    margin-bottom: 40px;
+}
+
+.info-content {
+    background-color: var(--info-content-bg-color, rgba(20, 20, 20, 0.8));
+    padding: 30px;
+    border-radius: 10px;
+    width: 80%;
+    max-width: 800px;
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #444;
+    text-align: left;
+    line-height: 1.6;
+}
+
+.info-content h2 {
+    font-size: 24px;
+    color: var(--info-h2-color, #ffff00);
+    margin-top: 0;
+}
+
+.info-content h3 {
+    font-size: 20px;
+    border-bottom: 1px solid #666;
+    padding-bottom: 5px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+.info-content ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.info-content ul ul {
+    padding-left: 20px;
+    list-style-type: disc;
+    margin-top: 5px;
+}
+
+.info-content li {
+    margin-bottom: 10px;
+}
+
+.info-content li strong {
+    color: var(--info-strong-color, #ffffaa);
+}
+
+.info-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#info-buttons {
+    margin-top: 30px;
+}
+
+/* --- UI STYLES --- */
+#ui-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 10;
+    pointer-events: none; /* Pass clicks through by default */
+    opacity: 0;
+    /* @tweakable The duration of the game UI fade-in animation. */
+    transition: opacity 0.5s ease-in;
+}
+
+#side-panel-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+}
+
+#inventory-toggle-container {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+    padding-right: 50px;
+    box-sizing: border-box;
+}
+
+#inventory-toggle {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0,0,0,0.5);
+    border: 2px solid #555;
+    border-radius: 5px;
+    cursor: pointer;
+    pointer-events: all; /* Make button clickable */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#inventory-toggle:hover {
+    background-color: rgba(0,0,0,0.7);
+}
+
+#inventory-toggle img {
+    width: 70%;
+    height: 70%;
+    filter: invert(1);
+}
+
+#inventory-panel {
+    display: none; /* Hidden by default */
+    grid-template-columns: repeat(6, 60px);
+    gap: 5px;
+    background-color: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 5px;
+    border: 2px solid #555;
+    pointer-events: all; /* Clicks register on panel */
+    margin-bottom: 0;
+    order: 1;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#inventory-panel.visible {
+    display: grid;
+}
+
+#hotbar {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    pointer-events: all; /* Clicks register on hotbar */
+}
+
+.slot {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #555;
+    background-color: rgba(20,20,20,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    user-select: none;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.slot.active {
+    border-color: #fff;
+    background-color: rgba(80,80,80,0.8);
+}
+
+.slot:not(.empty):hover {
+    background-color: rgba(50,50,50,0.8);
+}
+
+.slot img, .slot div {
+    max-width: 90%;
+    max-height: 90%;
+    pointer-events: none; /* Don't intercept drag events */
+}
+
+.slot .key-hint {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    color: #ccc;
+    font-size: 12px;
+    font-family: sans-serif;
+    font-weight: bold;
+}
+
+.slot .ammo-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    color: #fff;
+    font-size: 14px;
+    font-family: sans-serif;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    pointer-events: none;
+}
+
+/* Drag and Drop Styling */
+.dragging {
+    opacity: 0.5;
+}
+
+#restart-button {
+    padding: 15px 30px;
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    background-color: #D32F2F;
+    border: 2px solid #B71C1C;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s, transform 0.2s;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    margin-top: 30px; /* Space between title and button */
+}
+
+#restart-button:hover {
+    background-color: #E53935;
+    transform: scale(1.05);
+}
+
+#health-bar-container {
+    display: none;
+    position: fixed;
+    bottom: 100px; /* Position above hotbar */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 25px;
+    background-color: rgba(0,0,0,0.5);
+    border: 2px solid #555;
+    border-radius: 5px;
+    z-index: 15;
+    pointer-events: none;
+    padding: 2px;
+    box-sizing: border-box;
+    opacity: 0;
+    /* @tweakable The duration of the game UI fade-in animation. */
+    transition: opacity 0.5s ease-in;
+}
+
+#armor-bar {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: calc(100% - 4px);
+    background-color: #2196F3;
+    border-radius: 2px;
+    transition: width 0.2s ease-out;
+    z-index: 1;
+}
+
+#health-bar {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: calc(100% - 4px);
+    background-color: #4CAF50;
+    border-radius: 2px;
+    transition: width 0.2s ease-out, background-color 0.2s ease-out;
+    z-index: 0;
+}
+
+#health-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-family: sans-serif;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    font-size: 14px;
+}
+
+#wanted-level-container {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 10px 15px;
+    border-radius: 5px;
+    border: 2px solid #666;
+    z-index: 15;
+    pointer-events: none;
+    font-family: sans-serif;
+    color: white;
+    opacity: 0;
+    /* @tweakable The duration of the game UI fade-in animation. */
+    transition: opacity 0.5s ease-in;
+}
+
+#wanted-level-label {
+    margin-right: 10px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.wanted-star {
+    font-size: 20px;
+    margin: 0 2px;
+    color: #333;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.wanted-star.active {
+    color: #ff4444;
+    text-shadow: 0 0 8px rgba(255, 68, 68, 0.8);
+}
+
+#body-status-panel {
+    display: none; /* Hidden by default */
+    width: 200px;
+    height: 370px; /* Increased height for label */
+    background-color: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 5px;
+    border: 2px solid #555;
+    pointer-events: all;
+    position: relative; /* For positioning body parts */
+    font-family: sans-serif;
+    color: white;
+    order: 1;
+}
+
+#body-status-panel.visible {
+    display: block;
+}
+
+#body-status-panel.drop-target {
+    background-color: rgba(50,150,50,0.5);
+    border-color: #8f8;
+}
+
+.body-part-label {
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: #ccc;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.body-part {
+    position: absolute;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.body-part.ok {
+    background-color: #4CAF50; /* Green */
+}
+
+.body-part.damaged {
+    background-color: #FFC107; /* Amber */
+}
+
+.body-part.crippled {
+    background-color: #F44336; /* Red */
+}
+
+.body-part.head {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.body-part.torso {
+    width: 50px;
+    height: 100px;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.body-part.arm-left {
+    width: 20px;
+    height: 120px;
+    top: 105px;
+    left: calc(50% - 25px - 15px);
+    transform-origin: top center;
+    transform: rotate(20deg);
+}
+
+.body-part.arm-right {
+    width: 20px;
+    height: 120px;
+    top: 105px;
+    left: calc(50% + 25px - 5px);
+    transform-origin: top center;
+    transform: rotate(-20deg);
+}
+
+.body-part.leg-left {
+    width: 25px;
+    height: 150px;
+    top: 200px;
+    left: calc(50% - 25px);
+    transform-origin: top center;
+    transform: rotate(5deg);
+}
+
+.body-part.leg-right {
+    width: 25px;
+    height: 150px;
+    top: 200px;
+    left: calc(50%);
+    transform-origin: top center;
+    transform: rotate(-5deg);
+}
+
+.attachment-display {
+    width: 80%;
+    height: 80%;
+    background-color: #333;
+    border: 1px solid #666;
+    border-radius: 2px;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    text-align: center;
+    line-height: 1;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* --- Gun Mod Panel Styles --- */
+#gun-mod-panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    background-color: rgba(10,10,10,0.95);
+    border: 2px solid #555;
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 25;
+    color: white;
+    font-family: sans-serif;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+.gun-mod-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+#gun-mod-title {
+    margin: 0;
+}
+
+.gun-mod-close-button {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.gun-mod-close-button:hover {
+    color: white;
+}
+
+#gun-mod-content {
+    display: flex;
+    gap: 20px;
+    height: calc(100% - 60px);
+}
+
+.gun-mod-left-column, .gun-mod-right-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#gun-mod-weapon-info {
+    background-color: rgba(40,40,40,0.8);
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+#gun-mod-weapon-info h3 {
+    margin: 0;
+    color: white;
+}
+
+#gun-mod-weapon-info p {
+    margin: 5px 0 0 0;
+    color: #aaa;
+}
+
+#gun-mod-stats-container {
+    background-color: rgba(40,40,40,0.8);
+    padding: 15px;
+    border-radius: 5px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.gun-mod-right-column h3 {
+    margin: 0 0 10px 0;
+    color: #ccc;
+}
+
+#gun-mod-slots-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+#stash-panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50px;
+    transform: translateY(-50%);
+    width: 500px;
+    height: 700px;
+    background-color: rgba(10,10,10,0.95);
+    border: 2px solid #555;
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 25;
+    color: white;
+    font-family: sans-serif;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    pointer-events: all;
+}
+
+.stash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+.stash-header h3 {
+    margin: 0;
+    color: #4a8a4a;
+}
+
+.stash-close-button {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.stash-close-button:hover {
+    color: white;
+}
+
+#stash-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    height: calc(100% - 80px);
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+#stash-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+#stash-grid::-webkit-scrollbar-track {
+    background: rgba(40,40,40,0.8);
+    border-radius: 4px;
+}
+
+#stash-grid::-webkit-scrollbar-thumb {
+    background: rgba(100,100,100,0.8);
+    border-radius: 4px;
+}
+
+#stash-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(120,120,120,0.9);
+}
+
+.stash-slot {
+    background-color: rgba(30,30,30,0.8);
+    border: 2px solid #444;
+    min-height: 60px;
+    transition: all 0.2s ease;
+}
+
+.stash-slot:hover {
+    border-color: #4a8a4a;
+    background-color: rgba(50,50,50,0.9);
+}
+
+.stash-slot.empty {
+    background-color: rgba(20,20,20,0.6);
+}
+
+/* Transfer indication */
+.slot.transfer-ready {
+    background-color: rgba(74,138,74,0.4) !important;
+    border-color: #4a8a4a !important;
+    transform: scale(1.05);
+}
+
+#auto-sort-button:hover {
+    background-color: #5a9a5a;
+    transform: scale(1.05);
+}
+
+/* --- Inspect Panel Styles --- */
+#inspect-panel {
+    /* @tweakable Whether the inspect panel is visible. Should generally be controlled by script, not tweaked. */
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* @tweakable The width of the item inspection panel. */
+    width: 450px;
+     /* @tweakable The background color of the inspection panel. */
+    background-color: rgba(10,10,10,0.95);
+    /* @tweakable The border style for the inspection panel. */
+    border: 2px solid #888;
+    border-radius: 8px;
+    padding: 20px;
+    z-index: 26; /* Above gun mod panel */
+    color: white;
+    font-family: sans-serif;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+.inspect-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #666;
+    padding-bottom: 10px;
+}
+
+#inspect-title {
+    margin: 0;
+    /* @tweakable The font size for the inspect panel title. */
+    font-size: 20px;
+}
+
+.inspect-close-button {
+    background: none;
+    border: none;
+    color: #aaa;
+    /* @tweakable The font size for the close button on the inspect panel. */
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.inspect-close-button:hover {
+    color: white;
+}
+
+#inspect-content {
+    display: flex;
+    gap: 20px;
+}
+
+#inspect-icon-container {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    background-color: rgba(40,40,40,0.8);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#inspect-icon-display {
+    width: 100%;
+    height: 100%;
+    background-color: #333;
+    border: 1px solid #666;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* @tweakable The font size for the single-letter icon in the inspect panel. */
+    font-size: 48px;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#inspect-icon-img {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#inspect-info {
+    flex: 1;
+}
+
+#inspect-info h3 {
+    margin: 0 0 5px 0;
+    /* @tweakable The font size of the item name in the inspect panel. */
+    font-size: 18px;
+    color: #eee;
+}
+
+#inspect-info p {
+    margin: 0 0 15px 0;
+    /* @tweakable The font size and color of the item type text in the inspect panel. */
+    font-size: 14px;
+    color: #aaa;
+    font-style: italic;
+}
+
+#inspect-item-description ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#inspect-item-description li {
+    /* @tweakable The font size for description lines in the inspect panel. */
+    font-size: 14px;
+    margin-bottom: 8px;
+    background-color: rgba(255,255,255,0.05);
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+:root {
+  /* @tweakable The color for "good" stat changes in the inspect panel. */
+  --inspect-good-color: #4CAF50;
+  /* @tweakable The color for "bad" stat changes in the inspect panel. */
+  --inspect-bad-color: #F44336;
+}
