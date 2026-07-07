@@ -1,4 +1,5 @@
 import { world, enemies, pickups, deadDrops, projectiles } from './world.js';
+import { RemoteEnemy, RemotePlayer, RemotePickup, RemoteDeadDrop, RemoteProjectile } from './remote-entity.js';
 export const NET_VERSION = '1.0';
 export const TICK_RATE_HZ = 20;
 export const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
@@ -221,6 +222,10 @@ export class ClientManager {
         this.peer = null;
         this.connection = null;
         this.connected = false;
+        this.remoteEntities = new Map();
+        this.remotePlayer = null;
+        this.worldMeta = null;
+        this.lastSendTime = 0;
     }
     async join(roomCode) {
         return new Promise((resolve, reject) => {
@@ -228,12 +233,120 @@ export class ClientManager {
             this.peer.on('open', () => {
                 const conn = this.peer.connect(roomCode, { reliable: false });
                 this.connection = conn;
-                conn.on('open', () => { this.connected = true; resolve(); });
+                conn.on('open', () => {
+                    this.connected = true;
+                    this.setupDataHandler();
+                    resolve();
+                });
                 conn.on('error', (err) => reject(err));
                 conn.on('close', () => { this.connected = false; this.connection = null; });
             });
             this.peer.on('error', (err) => reject(err));
         });
+    }
+
+    setupDataHandler() {
+        if (!this.connection) return;
+        this.connection.on('data', (data) => this.handleData(data));
+    }
+
+    handleData(data) {
+        if (!data || typeof data !== 'object') return;
+        switch (data.t) {
+            case 'full': this._applyFullSnapshot(data.entities); break;
+            case 'delta': this._applyDeltas(data.e); break;
+            case 'events': this._applyEvents(data.events); break;
+        }
+    }
+
+    _applyFullSnapshot(entities) {
+        this.remoteEntities.clear();
+        this.remotePlayer = null;
+        this.worldMeta = null;
+        if (!Array.isArray(entities)) return;
+        for (const snap of entities) {
+            if (!snap || !snap.t) continue;
+            this._createRemoteEntity(snap);
+        }
+    }
+
+    _applyDeltas(deltas) {
+        if (!Array.isArray(deltas)) return;
+        for (const delta of deltas) {
+            if (!delta || !delta.id) continue;
+            const entity = this.remoteEntities.get(delta.id);
+            if (entity && typeof entity.applyDelta === 'function') {
+                entity.applyDelta(delta);
+            }
+        }
+    }
+
+    _applyEvents(events) {
+        if (!Array.isArray(events)) return;
+        for (const ev of events) {
+            if (!ev || !ev.type) continue;
+            if (ev.type === 'spawn') {
+                this._createRemoteEntity(ev);
+            } else if (ev.type === 'despawn') {
+                if (this.remotePlayer && this.remotePlayer.id === ev.id) this.remotePlayer = null;
+                this.remoteEntities.delete(ev.id);
+            }
+        }
+    }
+
+    _createRemoteEntity(snap) {
+        if (!snap || !snap.t || !snap.id) return null;
+        let entity = null;
+        switch (snap.t) {
+            case 'e': entity = new RemoteEnemy(snap); break;
+            case 'P':
+                entity = new RemotePlayer(snap);
+                this.remotePlayer = entity;
+                break;
+            case 'p': entity = new RemotePickup(snap); break;
+            case 'd': entity = new RemoteDeadDrop(snap); break;
+            case 'j': entity = new RemoteProjectile(snap); break;
+            default: return null;
+        }
+        this.remoteEntities.set(snap.id, entity);
+        return entity;
+    }
+
+    sendClientState(player, cameraObj, inputObj, canvasEl) {
+        if (!this.connected || !this.connection) return;
+        const now = Date.now();
+        if (now - this.lastSendTime < CLIENT_STATE_INTERVAL_MS) return;
+        this.lastSendTime = now;
+
+        const cam = cameraObj || { x: 0, y: 0 };
+        const canvas = canvasEl || { width: 0, height: 0 };
+        const mouse = inputObj && inputObj.mouse ? inputObj.mouse : { x: 0, y: 0 };
+        const mouseWorldX = mouse.x - canvas.width / 2 + cam.x;
+        const mouseWorldY = mouse.y - canvas.height / 2 + cam.y;
+        const aimAngle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
+
+        this._send({
+            t: 'clientState',
+            x: Math.round(player.x * 10) / 10,
+            y: Math.round(player.y * 10) / 10,
+            angle: Math.round((player.angle || 0) * 100) / 100,
+            aimAngle: Math.round(aimAngle * 100) / 100,
+            health: Math.round(player.health),
+            armor: Math.round(player.armor || 0),
+            isDead: !!player.isDead,
+            cameraX: Math.round(cam.x * 10) / 10,
+            cameraY: Math.round(cam.y * 10) / 10,
+            input: {
+                firing: !!(mouse.down && !player.isDead),
+                fireStartTime: (player.weapon && player.weapon.lastShotTime) ? player.weapon.lastShotTime : 0
+            }
+        });
+    }
+
+    _send(msg) {
+        if (this.connection && this.connection.open) {
+            this.connection.send(msg);
+        }
     }
 }
 

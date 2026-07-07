@@ -30,7 +30,7 @@ import Rival from './rival.js';
 import { ThrowableEntity } from './throwable.js';
 import { initStartMenu } from './start-menu.js';
 import { settings, initOptionsMenu } from './options.js';
-import { getNetwork, HostManager } from './net.js';
+import { getNetwork, HostManager, ClientManager } from './net.js';
 
 // Offscreen canvases for performance
 let staticBackgroundCanvas;
@@ -800,16 +800,22 @@ function gameLoop() {
         }
     }
 
-    manageCivilianSpawning();
-    manageCopSpawning(canvas);
-    manageCanSpawning();
-    manageDeadDropSpawning();
-    updateWantedLevel();
-    manageCivilianConflict(Date.now());
-    checkRivalSpawnConditions(player);
+    // Single network handle: declared once, used for both client gate and host broadcast
+    const _network = getNetwork();
+
+    // In client mode, the host authoritatively manages all NPC spawning.
+    // The client only renders remote entities, so skip local spawning/AI logic.
+    if (!(_network instanceof ClientManager)) {
+        manageCivilianSpawning();
+        manageCopSpawning(canvas);
+        manageCanSpawning();
+        manageDeadDropSpawning();
+        updateWantedLevel();
+        manageCivilianConflict(Date.now());
+        checkRivalSpawnConditions(player);
+    }
 
     // Network broadcast (host mode only)
-    const _network = getNetwork();
     if (_network && _network instanceof HostManager) {
         const clientCam = _network.lastClientCamera || { x: camera.x, y: camera.y };
         _network.broadcastTick(player, clientCam.x, clientCam.y);
@@ -1449,6 +1455,18 @@ function gameLoop() {
     }
 
     player.draw(ctx);
+
+    // --- Remote entity rendering (client mode only) ---
+    // Host-authoritative entities are rendered as remote stubs. Must run
+    // inside the world-space transform (before ctx.restore()).
+    if (_network instanceof ClientManager) {
+        const alpha = 0.3;
+        for (const entity of _network.remoteEntities.values()) {
+            entity.interpolate(alpha);
+            entity.draw(ctx);
+        }
+        _network.sendClientState(player, camera, input, canvas);
+    }
     
     ctx.restore();
 
