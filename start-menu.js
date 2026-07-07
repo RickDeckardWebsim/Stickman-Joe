@@ -1,3 +1,5 @@
+import { HostManager, ClientManager, getNetwork, setNetwork, NET_VERSION } from './net.js';
+
 /* @tweakable Styling for the info panel. Affects colors of title, text, and background. */
 const infoPanelStyles = {
     titleGlowColor: '#ffff00',
@@ -35,6 +37,11 @@ export function initStartMenu(startGameCallback) {
     const infoMenu = document.getElementById('info-menu');
     const backButton = document.getElementById('back-button');
     const infoBackButton = document.getElementById('info-back-button');
+    const hostButton = document.getElementById('host-button');
+    const joinButton = document.getElementById('join-button');
+    const multiplayerMenu = document.getElementById('multiplayer-menu');
+    const mpContent = document.getElementById('mp-content');
+    const mpBackButton = document.getElementById('mp-back-button');
 
     if (!startMenu || !playButton || !optionsButton || !cheatsButton || !infoButton || !optionsMenu || !infoMenu || !backButton || !infoBackButton) {
         console.error("Start menu, options menu or info menu elements not found!");
@@ -97,5 +104,90 @@ export function initStartMenu(startGameCallback) {
         // Placeholder for cheats menu functionality
         alert("Cheats menu is not yet implemented.");
         console.log("Cheats button clicked.");
+    });
+    hostButton.addEventListener('click', async () => {
+        mpContent.innerHTML = '<div id="mp-status">Creating session...</div>';
+        multiplayerMenu.classList.add('visible');
+        startMenu.style.display = 'none';
+
+        try {
+            const host = new HostManager();
+            const roomCode = await host.host();
+            setNetwork(host);
+
+            mpContent.innerHTML = `
+                <p>Room Code:</p>
+                <div id="room-code-display">${roomCode}</div>
+                <div id="mp-status">Waiting for player to join...</div>
+            `;
+
+            // Check periodically for connection
+            const checkInterval = setInterval(() => {
+                if (host.connected) {
+                    clearInterval(checkInterval);
+                    mpContent.innerHTML = '<div id="mp-status">Player connected! Starting game...</div>';
+                    setTimeout(() => {
+                        multiplayerMenu.classList.remove('visible');
+                        startGameCallback({ mode: 'host', network: host });
+                    }, 1000);
+                }
+            }, 200);
+        } catch (err) {
+            mpContent.innerHTML = `<div id="mp-status" style="color:#f44;">Failed to create session: ${err.message}</div>`;
+        }
+    });
+
+    joinButton.addEventListener('click', () => {
+        mpContent.innerHTML = `
+            <p>Enter Room Code:</p>
+            <input type="text" id="room-code-input" maxlength="4" placeholder="ABCD">
+            <div id="mp-status">Click Submit to join...</div>
+            <button id="mp-submit-button" style="margin-top:15px;padding:10px 30px;font-size:18px;">Submit</button>
+        `;
+        multiplayerMenu.classList.add('visible');
+        startMenu.style.display = 'none';
+
+        const input = document.getElementById('room-code-input');
+        const submitBtn = document.getElementById('mp-submit-button');
+        const status = document.getElementById('mp-status');
+        input.focus();
+
+        submitBtn.addEventListener('click', async () => {
+            const code = input.value.toUpperCase().trim();
+            if (code.length !== 4) {
+                status.textContent = 'Code must be 4 characters.';
+                return;
+            }
+            status.textContent = 'Connecting...';
+            try {
+                const client = new ClientManager();
+                await client.join(code);
+                setNetwork(client);
+                status.textContent = 'Connected! Starting game...';
+                setTimeout(() => {
+                    multiplayerMenu.classList.remove('visible');
+                    startGameCallback({ mode: 'client', network: client });
+                }, 1000);
+            } catch (err) {
+                status.textContent = `Failed to join: ${err.message}`;
+                status.style.color = '#f44';
+            }
+        });
+
+        // Allow Enter key to submit
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitBtn.click();
+        });
+    });
+
+    mpBackButton.addEventListener('click', () => {
+        multiplayerMenu.classList.remove('visible');
+        startMenu.style.display = 'flex';
+        // Clean up any pending network state if user backs out
+        const net = getNetwork();
+        if (net && !net.connected) {
+            if (net.peer) net.peer.destroy();
+            setNetwork(null);
+        }
     });
 }
