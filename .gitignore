@@ -1,0 +1,4 @@
+package.json.tmp_check
+*.tmp_check
+_originals/
+__pycache__/
