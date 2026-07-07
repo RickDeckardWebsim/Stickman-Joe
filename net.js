@@ -1,4 +1,4 @@
-import { world } from './world.js';
+import { world, enemies, pickups, deadDrops, projectiles } from './world.js';
 export const NET_VERSION = '1.0';
 export const TICK_RATE_HZ = 20;
 export const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
@@ -16,6 +16,7 @@ export class HostManager {
         this.roomCode = null;
         this.connected = false;
         this.lastSentState = new Map();
+        this.lastTickTime = 0;
     }
     async host() {
         return new Promise((resolve, reject) => {
@@ -119,6 +120,99 @@ export class HostManager {
             }
         }
         return despawns;
+    }
+
+    broadcastTick(localPlayer, clientCamX, clientCamY) {
+        if (!this.connected) return;
+
+        const now = Date.now();
+        if (now - this.lastTickTime < TICK_INTERVAL_MS) return;
+        this.lastTickTime = now;
+
+        const currentIds = new Set();
+        const deltas = [];
+        const events = [];
+
+        // Enemies
+        for (const e of enemies) {
+            if (!e) continue;
+            const snap = snapshotEnemy(e);
+            currentIds.add(snap.id);
+            const delta = this._computeDelta(snap, clientCamX, clientCamY);
+            if (delta) {
+                if (delta.type === 'spawn') events.push(delta);
+                else deltas.push(delta);
+            }
+        }
+
+        // Pickups
+        for (const p of pickups) {
+            if (!p) continue;
+            const snap = snapshotPickup(p);
+            currentIds.add(snap.id);
+            const delta = this._computeDelta(snap, clientCamX, clientCamY);
+            if (delta) { delta.type === 'spawn' ? events.push(delta) : deltas.push(delta); }
+        }
+
+        // Dead drops
+        for (const d of deadDrops) {
+            if (!d) continue;
+            const snap = snapshotDeadDrop(d);
+            currentIds.add(snap.id);
+            const delta = this._computeDelta(snap, clientCamX, clientCamY);
+            if (delta) { delta.type === 'spawn' ? events.push(delta) : deltas.push(delta); }
+        }
+
+        // Projectiles
+        for (const p of projectiles) {
+            if (!p) continue;
+            const snap = snapshotProjectile(p);
+            currentIds.add(snap.id);
+            const delta = this._computeDelta(snap, clientCamX, clientCamY);
+            if (delta) { delta.type === 'spawn' ? events.push(delta) : deltas.push(delta); }
+        }
+
+        // Player avatar (always send — no viewport culling)
+        const playerSnap = snapshotPlayer(localPlayer);
+        currentIds.add('player');
+        const playerDelta = this._computeDelta(playerSnap, clientCamX, clientCamY);
+        if (playerDelta) { playerDelta.type === 'spawn' ? events.push(playerDelta) : deltas.push(playerDelta); }
+
+        // World meta (always send)
+        const metaSnap = snapshotWorldMeta(world);
+        currentIds.add('worldmeta');
+        const metaDelta = this._computeDelta(metaSnap, clientCamX, clientCamY);
+        if (metaDelta) { metaDelta.type === 'spawn' ? events.push(metaDelta) : deltas.push(metaDelta); }
+
+        // Check despawns
+        const despawns = this._checkDespawns(currentIds);
+        events.push(...despawns);
+
+        // Send events first (immediate), then delta
+        if (events.length > 0) {
+            this._send({ t: 'events', events });
+        }
+        if (deltas.length > 0) {
+            this._send({ t: 'delta', e: deltas });
+        }
+    }
+
+    _send(msg) {
+        if (this.connection && this.connection.open) {
+            this.connection.send(msg);
+        }
+    }
+
+    sendFullSnapshot(localPlayer) {
+        if (!this.connected) return;
+        const entities = [];
+        for (const e of enemies) { if (e) entities.push(snapshotEnemy(e)); }
+        for (const p of pickups) { if (p) entities.push(snapshotPickup(p)); }
+        for (const d of deadDrops) { if (d) entities.push(snapshotDeadDrop(d)); }
+        for (const p of projectiles) { if (p) entities.push(snapshotProjectile(p)); }
+        entities.push(snapshotPlayer(localPlayer));
+        entities.push(snapshotWorldMeta(world));
+        this._send({ t: 'full', entities });
     }
 }
 

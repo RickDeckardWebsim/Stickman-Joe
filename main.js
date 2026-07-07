@@ -30,6 +30,7 @@ import Rival from './rival.js';
 import { ThrowableEntity } from './throwable.js';
 import { initStartMenu } from './start-menu.js';
 import { settings, initOptionsMenu } from './options.js';
+import { getNetwork, HostManager } from './net.js';
 
 // Offscreen canvases for performance
 let staticBackgroundCanvas;
@@ -806,6 +807,13 @@ function gameLoop() {
     updateWantedLevel();
     manageCivilianConflict(Date.now());
     checkRivalSpawnConditions(player);
+
+    // Network broadcast (host mode only)
+    const _network = getNetwork();
+    if (_network && _network instanceof HostManager) {
+        const clientCam = _network.lastClientCamera || { x: camera.x, y: camera.y };
+        _network.broadcastTick(player, clientCam.x, clientCam.y);
+    }
 
     // Update shells, and move settled ones to the settledShells array
     for (let i = shells.length - 1; i >= 0; i--) {
