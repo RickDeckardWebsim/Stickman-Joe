@@ -50,6 +50,8 @@ export class HostManager {
             this.connection = conn;
             conn.on('open', () => {
                 this.connected = true;
+                // Send version handshake so the client can reject incompatible hosts.
+                conn.send({ t: 'handshake', version: NET_VERSION });
                 // Create the shadow player that mirrors the joining client and
                 // send a full snapshot so the client has the initial world state.
                 this.createShadowPlayer(world.width, world.height);
@@ -342,10 +344,19 @@ export class ClientManager {
             this.peer.on('error', (err) => reject(err));
         });
     }
-
     setupDataHandler() {
         if (!this.connection) return;
-        this.connection.on('data', (data) => this.handleData(data));
+        this.connection.on('data', (data) => {
+            // Validate version handshake before accepting any other traffic.
+            if (data && data.t === 'handshake') {
+                if (data.version !== NET_VERSION) {
+                    this.connection.close();
+                    alert('Version mismatch — multiplayer modes are incompatible.');
+                }
+                return; // Don't pass handshake to handleData
+            }
+            this.handleData(data);
+        });
     }
 
     handleData(data) {
