@@ -18,6 +18,11 @@ export class HostManager {
         this.connected = false;
         this.lastSentState = new Map();
         this.lastTickTime = 0;
+        this.lastClientCamera = { x: 0, y: 0 };
+        this.clientState = null;
+        this.shadowPlayer = null;
+        this.lastClientFireTime = 0;
+        this.localPlayer = null;
     }
     async host() {
         return new Promise((resolve, reject) => {
@@ -43,7 +48,19 @@ export class HostManager {
         peer.on('connection', (conn) => {
             if (this.connection) { conn.close(); return; }
             this.connection = conn;
-            conn.on('open', () => { this.connected = true; });
+            conn.on('open', () => {
+                this.connected = true;
+                // Create the shadow player that mirrors the joining client and
+                // send a full snapshot so the client has the initial world state.
+                this.createShadowPlayer(world.width, world.height);
+                if (this.localPlayer) this.sendFullSnapshot(this.localPlayer);
+            });
+            conn.on('data', (data) => {
+                if (data && data.t === 'clientState') {
+                    this.clientState = data;
+                    this.lastClientCamera = { x: data.cameraX, y: data.cameraY };
+                }
+            });
             conn.on('close', () => { this.connected = false; this.connection = null; });
         });
     }
@@ -214,6 +231,59 @@ export class HostManager {
         entities.push(snapshotPlayer(localPlayer));
         entities.push(snapshotWorldMeta(world));
         this._send({ t: 'full', entities });
+    }
+    async createShadowPlayer(worldWidth, worldHeight) {
+        const Player = (await import('./player.js')).default;
+        this.shadowPlayer = new Player(worldWidth / 2 + 100, worldHeight / 2);
+        this.shadowPlayer.isRemote = true;
+        // The Player constructor already populates the inventory with a default
+        // Rifle in slot 0 and sets this.weapon to it, so the shadow can fire.
+    }
+
+    applyClientInput() {
+        if (!this.clientState || !this.shadowPlayer) return;
+        // Mirror the client's reported state onto the shadow player.
+        this.shadowPlayer.x = this.clientState.x;
+        this.shadowPlayer.y = this.clientState.y;
+        this.shadowPlayer.angle = this.clientState.angle;
+        this.shadowPlayer.health = this.clientState.health;
+        this.shadowPlayer.armor = this.clientState.armor;
+        this.shadowPlayer.isDead = this.clientState.isDead;
+        // The shadow weapon's update() is never called on the host (we fire
+        // directly via fireOneShot), so it would never reload. Keep its ammo
+        // topped up so the client's fire input is never silently dropped.
+        if (this.shadowPlayer.weapon && this.shadowPlayer.weapon.ammo <= 1) {
+            this.shadowPlayer.weapon.ammo = this.shadowPlayer.weapon.magSize || 30;
+        }
+
+        // Spawn an authoritative projectile when the client is firing. The
+        // client may report the same fireStartTime across several packets, so
+        // deduplicate by that timestamp.
+        if (this.clientState.input && this.clientState.input.firing &&
+            this.shadowPlayer.weapon && !this.shadowPlayer.isDead) {
+            const now = Date.now();
+            const fireTime = this.clientState.input.fireStartTime || now;
+            if (fireTime !== this.lastClientFireTime) {
+                this.lastClientFireTime = fireTime;
+                if (now - (this.shadowPlayer.weapon.lastShotTime || 0) >= this.shadowPlayer.weapon.fireRate) {
+                    this._spawnClientProjectile();
+                }
+            }
+        }
+    }
+
+    _spawnClientProjectile() {
+        if (!this.shadowPlayer || !this.shadowPlayer.weapon) return;
+        // The weapon's fireOneShot derives direction from owner.angle, so
+        // temporarily aim the shadow at the client's reported aim angle.
+        const savedAngle = this.shadowPlayer.angle;
+        this.shadowPlayer.angle = this.clientState.aimAngle;
+        try {
+            this.shadowPlayer.weapon.fireOneShot(Date.now());
+        } catch (e) {
+            console.warn('Client projectile spawn failed:', e);
+        }
+        this.shadowPlayer.angle = savedAngle; // restore visual angle
     }
 }
 

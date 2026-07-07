@@ -802,6 +802,13 @@ function gameLoop() {
 
     // Single network handle: declared once, used for both client gate and host broadcast
     const _network = getNetwork();
+    // Host mode: feed the connected client's reported state into the shadow
+    // player before any NPC/spawning logic runs, so authoritative projectiles
+    // are spawned in the same tick the host processes the rest of the world.
+    if (_network && _network instanceof HostManager) {
+        _network.localPlayer = player; // keep host's local player reference updated
+        _network.applyClientInput();
+    }
 
     // In client mode, the host authoritatively manages all NPC spawning.
     // The client only renders remote entities, so skip local spawning/AI logic.
@@ -1173,7 +1180,11 @@ function gameLoop() {
         let projectileRemoved = false;
 
         // --- COLLISION DETECTION ---
-        if (p.owner === player && player) {
+        // Friendly projectiles come from the host's local player OR the host's
+        // shadow player (which mirrors the connected client). Both check
+        // against enemies; everything else is treated as an enemy projectile.
+        const isFriendly = p.owner && (p.owner === player || (_network instanceof HostManager && _network.shadowPlayer === p.owner));
+        if (isFriendly && player) {
             // Player's projectile, check against enemies
             for (let j = enemies.length - 1; j >= 0; j--) {
                 const enemy = enemies[j];
@@ -1455,6 +1466,13 @@ function gameLoop() {
     }
 
     player.draw(ctx);
+    // --- Shadow player rendering (host mode only) ---
+    // The host mirrors the connected client as a local Player avatar so the
+    // host can see the client's position. Must run inside the world-space
+    // transform (before ctx.restore()).
+    if (_network && _network instanceof HostManager && _network.shadowPlayer) {
+        _network.shadowPlayer.draw(ctx);
+    }
 
     // --- Remote entity rendering (client mode only) ---
     // Host-authoritative entities are rendered as remote stubs. Must run
