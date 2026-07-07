@@ -55,4 +55,17 @@ export class ClientManager {
         this.connection = null;
         this.connected = false;
     }
+    async join(roomCode) {
+        return new Promise((resolve, reject) => {
+            this.peer = new Peer();
+            this.peer.on('open', () => {
+                const conn = this.peer.connect(roomCode, { reliable: false });
+                this.connection = conn;
+                conn.on('open', () => { this.connected = true; resolve(); });
+                conn.on('error', (err) => reject(err));
+                conn.on('close', () => { this.connected = false; this.connection = null; });
+            });
+            this.peer.on('error', (err) => reject(err));
+        });
+    }
 }
