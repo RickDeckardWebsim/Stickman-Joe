@@ -28,16 +28,21 @@ export class HostManager {
                     this.peer = new Peer(this.roomCode);
                     this.peer.on('open', () => resolve(this.roomCode));
                     this.peer.on('error', (e) => reject(e));
+                    this._attachConnectionHandler(this.peer);
                 } else {
                     reject(err);
                 }
             });
-            this.peer.on('connection', (conn) => {
-                if (this.connection) { conn.close(); return; }
-                this.connection = conn;
-                conn.on('open', () => { this.connected = true; });
-                conn.on('close', () => { this.connected = false; this.connection = null; });
-            });
+            this._attachConnectionHandler(this.peer);
+        });
+    }
+
+    _attachConnectionHandler(peer) {
+        peer.on('connection', (conn) => {
+            if (this.connection) { conn.close(); return; }
+            this.connection = conn;
+            conn.on('open', () => { this.connected = true; });
+            conn.on('close', () => { this.connected = false; this.connection = null; });
         });
     }
 
