@@ -1483,7 +1483,39 @@ function gameLoop() {
             entity.interpolate(alpha);
             entity.draw(ctx);
         }
+        // Wire the pickup-result callback once (full item reconstruction
+        // is deferred to Task 13 polish).
+        if (!_network.onPickupResult) {
+            _network.onPickupResult = (itemSnap) => {
+                // Simple feedback — log for now, full item reconstruction is complex
+                console.log('Picked up remote item:', itemSnap.itemType, itemSnap.icon);
+                // TODO: reconstruct actual item instance and add to inventory (Task 13 polish)
+            };
+        }
+        // Check for pickup interaction (client mode)
+        if (input.justPressed.has('e') && player && !player.isDead) {
+            for (const [id, entity] of _network.remoteEntities) {
+                if (entity.constructor.name === 'RemotePickup') {
+                    const dist = Math.hypot(player.x - entity.x, player.y - entity.y);
+                    if (dist < player.radius + 25) {
+                        _network.requestPickup(id);
+                        break;
+                    }
+                }
+            }
+        }
         _network.sendClientState(player, camera, input, canvas);
+    }
+    // Disconnect overlay (client mode): when the host drops, show a brief
+    // overlay and reload back to the menu. Guarded by _disconnectHandled so
+    // it only fires once.
+    if (_network instanceof ClientManager && !_network.connected && !_network._disconnectHandled) {
+        _network._disconnectHandled = true;
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);color:white;display:flex;justify-content:center;align-items:center;z-index:100;font-family:sans-serif;font-size:24px;text-align:center;';
+        overlay.innerHTML = 'Host disconnected<br>Returning to menu...';
+        document.body.appendChild(overlay);
+        setTimeout(() => location.reload(), 2000);
     }
     
     ctx.restore();

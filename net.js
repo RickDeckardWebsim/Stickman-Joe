@@ -60,8 +60,16 @@ export class HostManager {
                     this.clientState = data;
                     this.lastClientCamera = { x: data.cameraX, y: data.cameraY };
                 }
+                if (data && data.t === 'pickupRequest') {
+                    this._handlePickupRequest(data);
+                }
             });
-            conn.on('close', () => { this.connected = false; this.connection = null; });
+            conn.on('close', () => {
+                this.connected = false;
+                this.connection = null;
+                this.shadowPlayer = null;
+                // Host returns to single-player seamlessly
+            });
         });
     }
 
@@ -285,6 +293,20 @@ export class HostManager {
         }
         this.shadowPlayer.angle = savedAngle; // restore visual angle
     }
+    _handlePickupRequest(data) {
+        // Find the pickup in the host's world by id
+        const idx = pickups.findIndex(p => p && (p.id === data.id || `${p.x},${p.y}` === data.id));
+        if (idx === -1) {
+            this._send({ t: 'pickupResult', id: data.id, success: false });
+            return;
+        }
+        const pickup = pickups[idx];
+        const itemSnap = snapshotPickup(pickup);
+        // Remove from host world
+        pickups.splice(idx, 1);
+        // Send success to client
+        this._send({ t: 'pickupResult', id: data.id, success: true, item: itemSnap });
+    }
 }
 
 export class ClientManager {
@@ -296,6 +318,8 @@ export class ClientManager {
         this.remotePlayer = null;
         this.worldMeta = null;
         this.lastSendTime = 0;
+        this.onPickupResult = null;
+        this.onDisconnect = null;
     }
     async join(roomCode) {
         return new Promise((resolve, reject) => {
@@ -309,7 +333,11 @@ export class ClientManager {
                     resolve();
                 });
                 conn.on('error', (err) => reject(err));
-                conn.on('close', () => { this.connected = false; this.connection = null; });
+                conn.on('close', () => {
+                    this.connected = false;
+                    this.connection = null;
+                    if (this.onDisconnect) this.onDisconnect('host');
+                });
             });
             this.peer.on('error', (err) => reject(err));
         });
@@ -326,6 +354,7 @@ export class ClientManager {
             case 'full': this._applyFullSnapshot(data.entities); break;
             case 'delta': this._applyDeltas(data.e); break;
             case 'events': this._applyEvents(data.events); break;
+            case 'pickupResult': this._handlePickupResult(data); break;
         }
     }
 
@@ -411,6 +440,18 @@ export class ClientManager {
                 fireStartTime: (player.weapon && player.weapon.lastShotTime) ? player.weapon.lastShotTime : 0
             }
         });
+    }
+
+    requestPickup(entityId) {
+        this._send({ t: 'pickupRequest', id: entityId });
+    }
+
+    _handlePickupResult(data) {
+        // Remove the remote pickup from view
+        this.remoteEntities.delete(data.id);
+        if (data.success && data.item && this.onPickupResult) {
+            this.onPickupResult(data.item);
+        }
     }
 
     _send(msg) {
