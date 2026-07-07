@@ -15,6 +15,7 @@ export class HostManager {
         this.connection = null;
         this.roomCode = null;
         this.connected = false;
+        this.lastSentState = new Map();
     }
     async host() {
         return new Promise((resolve, reject) => {
@@ -47,6 +48,72 @@ export class HostManager {
             code += chars[Math.floor(Math.random() * chars.length)];
         }
         return code;
+    }
+    _computeDelta(currentSnap, clientCamX, clientCamY, viewportBuffer = 200) {
+        const id = currentSnap.id;
+
+        // Viewport culling: skip if entity is far outside client's view (except player and worldmeta)
+        if (currentSnap.type !== 'P' && currentSnap.type !== 'w') {
+            const dx = currentSnap.x - clientCamX;
+            const dy = currentSnap.y - clientCamY;
+            const viewDist = Math.hypot(dx, dy);
+            if (viewDist > 800 + viewportBuffer) return null;
+        }
+
+        const last = this.lastSentState.get(id);
+        if (!last) {
+            this.lastSentState.set(id, currentSnap);
+            const { type, ...rest } = currentSnap;
+            return { type: 'spawn', t: type, ...rest };
+        }
+
+        const delta = { type: 'update', id, t: currentSnap.type };
+        let changed = false;
+
+        const numericThresholds = { x: 2, y: 2, angle: 0.1 };
+
+        for (const field of Object.keys(currentSnap)) {
+            if (field === 'type' || field === 'id') continue;
+            const cur = currentSnap[field];
+            const prev = last[field];
+            const threshold = numericThresholds[field];
+
+            if (threshold !== undefined) {
+                // Numeric threshold
+                if (typeof cur === 'number' && typeof prev === 'number') {
+                    if (Math.abs(cur - prev) >= threshold) {
+                        delta[field] = cur;
+                        changed = true;
+                    }
+                } else if (cur !== prev) {
+                    delta[field] = cur;
+                    changed = true;
+                }
+            } else {
+                // Any change (booleans, strings, objects, enums)
+                if (cur !== prev) {
+                    delta[field] = cur;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            this.lastSentState.set(id, currentSnap);
+            return delta;
+        }
+        return null;
+    }
+
+    _checkDespawns(currentIds) {
+        const despawns = [];
+        for (const id of this.lastSentState.keys()) {
+            if (!currentIds.has(id)) {
+                despawns.push({ type: 'despawn', id });
+                this.lastSentState.delete(id);
+            }
+        }
+        return despawns;
     }
 }
 
