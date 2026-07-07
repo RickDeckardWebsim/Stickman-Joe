@@ -15,6 +15,38 @@ export class HostManager {
         this.roomCode = null;
         this.connected = false;
     }
+    async host() {
+        return new Promise((resolve, reject) => {
+            this.roomCode = this._generateRandomCode();
+            this.peer = new Peer(this.roomCode);
+            this.peer.on('open', (id) => resolve(this.roomCode));
+            this.peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') {
+                    this.roomCode = this._generateRandomCode();
+                    this.peer = new Peer(this.roomCode);
+                    this.peer.on('open', () => resolve(this.roomCode));
+                    this.peer.on('error', (e) => reject(e));
+                } else {
+                    reject(err);
+                }
+            });
+            this.peer.on('connection', (conn) => {
+                if (this.connection) { conn.close(); return; }
+                this.connection = conn;
+                conn.on('open', () => { this.connected = true; });
+                conn.on('close', () => { this.connected = false; this.connection = null; });
+            });
+        });
+    }
+
+    _generateRandomCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 4; i++) {
+            code += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return code;
+    }
 }
 
 export class ClientManager {
