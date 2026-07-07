@@ -90,7 +90,37 @@ canvas {
 #menu-buttons {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 15px;
+    align-items: center;
+}
+
+.menu-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+
+.menu-section-label {
+    color: #aaa;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-family: sans-serif;
+    margin-bottom: 2px;
+}
+
+.menu-divider {
+    width: 200px;
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+    margin: 5px 0;
+}
+
+.menu-row {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
 }
 
 #start-menu button, #options-menu button, #info-menu button {
@@ -1041,6 +1071,17 @@ canvas {
     align-items: center;
     z-index: 20;
     font-family: sans-serif;
+    backdrop-filter: blur(5px);
+}
+
+#multiplayer-menu h1 {
+    font-size: 60px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #ffffff;
+    text-shadow: 0 0 20px rgba(74, 138, 74, 0.8);
+    margin-bottom: 30px;
 }
 
 #multiplayer-menu.visible {
@@ -1072,6 +1113,34 @@ canvas {
     letter-spacing: 12px;
     color: #4a8a4a;
     margin: 20px 0;
+    text-shadow: 0 0 15px rgba(74, 138, 74, 0.5);
+}
+
+#mp-content input:focus {
+    outline: none;
+    border-color: #40916c;
+    box-shadow: 0 0 10px rgba(64, 145, 108, 0.3);
+}
+
+#mp-submit-button {
+    padding: 12px 35px;
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    background-color: #2d6a4f;
+    border: 2px solid #1b4332;
+    border-radius: 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+}
+
+#mp-submit-button:hover {
+    background-color: #40916c;
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(64, 145, 108, 0.4);
 }
 
 #mp-status {
@@ -1096,11 +1165,13 @@ canvas {
 }
 
 #start-menu #host-button, #start-menu #join-button {
-    background-color: #444;
+    background-color: #2d6a4f;
     color: white;
-    border: 2px solid #555;
+    border: 2px solid #1b4332;
+    min-width: 180px;
 }
 
 #start-menu #host-button:hover, #start-menu #join-button:hover {
-    background-color: #666;
+    background-color: #40916c;
+    box-shadow: 0 8px 20px rgba(64, 145, 108, 0.4);
 }

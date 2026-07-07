@@ -17,12 +17,21 @@
         <div id="start-menu">
             <h1>Stickman Joe</h1>
             <div id="menu-buttons">
-                <button id="play-button">Play</button>
-                <button id="options-button">Options</button>
-                <button id="info-button">Info</button>
-                <button id="cheats-button">Cheats</button>
-                <button id="host-button">Host Game</button>
-                <button id="join-button">Join Game</button>
+                <div class="menu-section">
+                    <button id="play-button">Play</button>
+                    <button id="options-button">Options</button>
+                    <button id="info-button">Info</button>
+                    <button id="cheats-button">Cheats</button>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="menu-section">
+                    <div class="menu-section-label">Multiplayer</div>
+                    <div class="menu-row">
+                        <button id="host-button">Host Game</button>
+                        <button id="join-button">Join Game</button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="options-menu">
             <h1>Options</h1>
@@ -179,6 +188,7 @@
                 <button id="mp-back-button">Back</button>
             </div>
         </div>
+    </div>
     <div id="ui-container"></div>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script type="module" src="./options.js"></script>
