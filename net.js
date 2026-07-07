@@ -1,3 +1,4 @@
+import { world } from './world.js';
 export const NET_VERSION = '1.0';
 export const TICK_RATE_HZ = 20;
 export const TICK_INTERVAL_MS = 1000 / TICK_RATE_HZ;
@@ -68,4 +69,113 @@ export class ClientManager {
             this.peer.on('error', (err) => reject(err));
         });
     }
+}
+
+// --- Snapshot extraction (host -> client wire format) ---
+// Pure functions: extract gameplay-critical fields into flat objects
+// suitable for JSON serialization over WebRTC. Numeric positions are
+// rounded to 1 decimal place to save bytes.
+
+export function snapshotEnemy(e) {
+    return {
+        type: 'e',
+        id: e.enemyId,
+        x: Math.round(e.x * 10) / 10,
+        y: Math.round(e.y * 10) / 10,
+        angle: Math.round(e.angle * 100) / 100,
+        health: Math.round(e.health),
+        maxHealth: Math.round(e.maxHealth),
+        state: e.state,
+        isCop: e.isCop,
+        isZombie: e.isZombie,
+        isHostile: e.isHostileActor,
+        weaponType: e.weapon ? e.weapon.name : null,
+        isDead: e.health <= 0,
+        la: e.limbs.leftArm !== false,
+        ra: e.limbs.rightArm !== false,
+        ll: e.limbs.leftLeg !== false,
+        rl: e.limbs.rightLeg !== false
+    };
+}
+
+export function snapshotCorpse(c) {
+    return {
+        type: 'c',
+        id: c.id || `${c.x},${c.y}`,
+        x: Math.round(c.x * 10) / 10,
+        y: Math.round(c.y * 10) / 10,
+        angle: Math.round((c.angle || 0) * 100) / 100
+    };
+}
+
+export function snapshotPickup(p) {
+    return {
+        type: 'p',
+        id: p.id || `${p.x},${p.y}`,
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10,
+        itemType: p.constructor.name,
+        icon: p.icon || null,
+        amount: p.amount || 0
+    };
+}
+
+export function snapshotDeadDrop(d) {
+    return {
+        type: 'd',
+        id: d.id || `${d.x},${d.y}`,
+        x: Math.round(d.x * 10) / 10,
+        y: Math.round(d.y * 10) / 10,
+        color: d.color || '#ffffff'
+    };
+}
+
+export function snapshotProjectile(p) {
+    return {
+        type: 'j',
+        id: p.id || `${p.x},${p.y},${Date.now()}`,
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10,
+        vx: Math.round(p.vx * 10) / 10,
+        vy: Math.round(p.vy * 10) / 10,
+        projType: p.weaponName || 'unknown',
+        ownerIsPlayer: p.owner === world.player
+    };
+}
+
+export function snapshotPlayer(p) {
+    return {
+        type: 'P',
+        id: 'player',
+        x: Math.round(p.x * 10) / 10,
+        y: Math.round(p.y * 10) / 10,
+        angle: Math.round(p.angle * 100) / 100,
+        vx: Math.round((p.vx || 0) * 10) / 10,
+        vy: Math.round((p.vy || 0) * 10) / 10,
+        health: Math.round(p.health),
+        maxHealth: Math.round(p.maxHealth),
+        armor: Math.round(p.armor),
+        isDead: p.isDead,
+        limbs: p.limbs,
+        weapon: p.weapon ? {
+            name: p.weapon.name,
+            recoil: Math.round((p.weapon.recoil || 0) * 100) / 100,
+            isReloading: p.weapon.isReloading || false,
+            reloadAnimProgress: p.weapon.reloadAnimProgress || 0,
+            pumpProgress: p.weapon.pumpProgress || 0
+        } : null,
+        walkCycle: Math.round((p.walkCycle || 0) * 100) / 100,
+        isMoving: p.isMoving || false,
+        currentWeaponSlot: p.currentWeaponSlot
+    };
+}
+
+export function snapshotWorldMeta(w) {
+    return {
+        type: 'w',
+        id: 'worldmeta',
+        wantedLevel: w.wantedLevel,
+        zombieWantedLevel: w.zombieWantedLevel,
+        time: Date.now()
+    };
 }
