@@ -27,6 +27,7 @@ import { DeadDrop } from './dead-drop.js';
 import { InjectionCannon } from './injection-cannon.js';
 import { LMG } from './lmg.js';
 import Rival from './rival.js';
+import Summit, { incrementSummitKillCount } from './summit.js';
 import { ThrowableEntity } from './throwable.js';
 import { initStartMenu } from './start-menu.js';
 import { settings, initOptionsMenu } from './options.js';
@@ -44,6 +45,11 @@ let voidSwirlCanvas;
 // --- Rival Spawning ---
 let rivalHasSpawned = false;
 const RIVAL_SPAWN_CAN_COUNT = 5;
+
+// --- Summit Spawning ---
+let summitHasSpawned = false;
+const SUMMIT_SPAWN_KILL_THRESHOLD = 50;
+let totalKills = 0;
 
 // Blood Decal Manager
 class BloodDecalManager {
@@ -823,6 +829,7 @@ function gameLoop() {
         updateAlerts();
         manageCivilianConflict(Date.now());
         checkRivalSpawnConditions(player);
+        checkSummitSpawnConditions();
     }
 
     // Network broadcast (host mode only)
@@ -967,6 +974,8 @@ function gameLoop() {
             if (enemy.health <= 0) {
                 const now = Date.now();
                 recentKillTimestamps.push(now);
+                totalKills++;
+                if (summitHasSpawned) incrementSummitKillCount();
                 recentKillTimestamps = recentKillTimestamps.filter(t => now - t <= moneyDropConfig.rapidKillTimeWindow); // Keep kills from last second
 
                 if (enemy.isCommander) {
@@ -1840,5 +1849,21 @@ function checkRivalSpawnConditions(player) {
     const canStack = player.inventory.find(item => item instanceof EmptyCan);
     if (canStack && canStack.amount >= RIVAL_SPAWN_CAN_COUNT) {
         spawnRival();
+    }
+}
+
+function spawnSummit() {
+    if (summitHasSpawned) return;
+    const spawnPoint = getOffscreenSpawnPoint(canvas);
+    const summit = new Summit(spawnPoint.x, spawnPoint.y);
+    enemies.push(summit);
+    summitHasSpawned = true;
+    console.log("Summit has arrived. The dead stir...");
+}
+
+function checkSummitSpawnConditions() {
+    if (summitHasSpawned) return;
+    if (totalKills >= SUMMIT_SPAWN_KILL_THRESHOLD) {
+        spawnSummit();
     }
 }
