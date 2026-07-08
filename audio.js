@@ -40,7 +40,7 @@ export function playSound(name, options = {}) {
     if (!soundBuffers[name]) {
         // Only warn for sounds that are expected to exist.
         // Avoids console spam for things like 'shotgun_pump' which doesn't have a separate file yet.
-        if (['shoot', 'shotgun_shoot', 'knife_swing', 'knife_hit', 'explosion', 'reload', 'empty_click', 'heal', 'heal_fail', 'injection_cannon_shoot', 'zombie_bite'].includes(name)) {
+        if (['shoot', 'shotgun_shoot', 'knife_swing', 'knife_hit', 'explosion', 'reload', 'empty_click', 'injection_cannon_shoot', 'zombie_bite'].includes(name)) {
             console.warn(`Sound not loaded: ${name}`);
         }
         return;

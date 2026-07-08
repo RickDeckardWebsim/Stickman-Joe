@@ -1812,8 +1812,6 @@ async function startGame() {
         loadSound('explosion', 'explosion.mp3'),
         loadSound('reload', 'reload.mp3'),
         loadSound('empty_click', 'empty_click.mp3'),
-        loadSound('heal', 'heal.mp3'),
-        loadSound('heal_fail', 'heal_fail.mp3'),
         loadSound('injection_cannon_shoot', 'injection_cannon_shoot.mp3'),
         loadSound('zombie_bite', 'zombie_bite.mp3'),
     ]);
