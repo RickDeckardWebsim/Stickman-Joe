@@ -4,7 +4,7 @@ import { shells, projectiles, particles, world, camera, enemies, corpses, settle
 import { loadSound } from './audio.js';
 import { initUI, updateUI, isMouseOverUI, toggleInventoryAndBodyStatus, isDraggingItem, isInventoryOpen } from './ui.js';
 import { createImpactParticles, createBuildingImpactParticles } from './impact.js';
-import { createBloodSplatter, createHeadChunkParticle, NeckBloodEmitter, BloodParticle } from './gore.js';
+import { createBloodSplatter, createHeadChunkParticle, NeckBloodEmitter, BloodParticle, BloodPool, checkAndLeaveBloodFootprint, updateCorpseBleeding } from './gore.js';
 import Ragdoll from './ragdoll.js';
 import { notifyNearbyEnemiesOfDeath, checkCrimeWitnesses } from './ai/witness.js';
 import ItemPickup, { AmmoPickup, ThrowablePickup } from './pickup.js';
@@ -338,6 +338,7 @@ function resizeCanvas() {
         bloodCanvas = document.getElementById('blood-canvas');
         bloodDecalManager = new BloodDecalManager();
         bloodDecalManager.initialize(bloodCanvas);
+        window.bloodDecalManager = bloodDecalManager;
     }
 }
 window.addEventListener('resize', resizeCanvas);
@@ -914,6 +915,24 @@ function gameLoop() {
         } else if (p.markedForDecalStamp && !p.hasBeenStampedToDecal) {
             // Let blood particle draw one final frame in the render loop
             // It will be stamped and removed in the render section
+        }
+    }
+
+    // --- Blood footprints: entities walking through blood leave trails ---
+    if (player && !player.isDead) {
+        checkAndLeaveBloodFootprint(player);
+    }
+    for (const enemy of enemies) {
+        if (enemy && enemy.health > 0 && enemy.isMoving) {
+            checkAndLeaveBloodFootprint(enemy);
+        }
+    }
+
+    // --- Corpse bleeding: settled corpses leak blood into pools ---
+    const bleedNow = Date.now();
+    for (const corpse of settledCorpses) {
+        if (corpse && !corpse._beingEaten) {
+            updateCorpseBleeding(corpse, bleedNow);
         }
     }
 

@@ -1,3 +1,143 @@
+// --- Blood Pool System ---
+// Expanding pools that form where blood accumulates
+export class BloodPool {
+    constructor(x, y, maxRadius = 15, color = null) {
+        this.x = x;
+        this.y = y;
+        this.radius = 0;
+        this.maxRadius = maxRadius;
+        this.color = color || settings.bloodColor;
+        this.growthRate = 0.3;
+        this.active = true;
+        this.life = 600 + Math.random() * 400; // 10-16 seconds before settling to decal
+        this.startTime = Date.now();
+        this.settled = false;
+    }
+
+    update(deltaTime = 16) {
+        if (!this.active) return false;
+
+        // Expand the pool
+        if (this.radius < this.maxRadius) {
+            this.radius += this.growthRate * (deltaTime / 16);
+        }
+
+        // Life timer
+        this.life -= deltaTime;
+        if (this.life <= 0 && !this.settled) {
+            this.settled = true;
+            // Stamp to decal canvas as a permanent pool
+            import('./main.js').then(() => {
+                if (window.bloodDecalManager) {
+                    const rgb = hexToRgb(this.color);
+                    const r = rgb ? rgb.r : 160, g = rgb ? rgb.g : 15, b = rgb ? rgb.b : 15;
+                    // Darker for the pool center
+                    window.bloodDecalManager.stampDot(this.x, this.y, this.radius, `rgba(${r},${g},${b},0.6)`);
+                    // Slightly larger, lighter ring
+                    window.bloodDecalManager.stampDot(this.x, this.y, this.radius * 1.3, `rgba(${r},${g},${b},0.3)`);
+                }
+            });
+            this.active = false;
+            return true; // Remove from active particles
+        }
+
+        return false;
+    }
+
+    draw(ctx) {
+        if (this.settled) return;
+        const rgb = hexToRgb(this.color);
+        const r = rgb ? rgb.r : 160, g = rgb ? rgb.g : 15, b = rgb ? rgb.b : 15;
+
+        // Pool with gradient — darker center, fading edges
+        const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+        grad.addColorStop(0, `rgba(${r},${g},${b},0.7)`);
+        grad.addColorStop(0.7, `rgba(${r},${g},${b},0.4)`);
+        grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// --- Blood Footprint System ---
+// Tracks entities walking through blood and leaves footprints
+const bloodFootprintTracker = new Map(); // entityId -> { lastFootX, lastFootY, lastStepTime, alternate }
+
+export function checkAndLeaveBloodFootprint(entity) {
+    if (!entity || entity.health <= 0) return;
+    if (!window.bloodDecalManager) return;
+
+    const grid = window.bloodDecalManager.bloodGrid;
+    if (!grid) return;
+
+    const gridSize = window.bloodDecalManager.gridSize;
+    const gridX = Math.floor(entity.x / gridSize);
+    const gridY = Math.floor(entity.y / gridSize);
+
+    if (gridX < 0 || gridX >= grid[0].length || gridY < 0 || gridY >= grid.length) return;
+
+    // Check if there's blood at this location
+    const bloodLevel = grid[gridY][gridX];
+    if (bloodLevel < 0.15) return; // Not enough blood to leave footprints
+
+    // Track footprints per entity
+    const trackId = entity.enemyId || 'player';
+    let tracker = bloodFootprintTracker.get(trackId);
+    if (!tracker) {
+        tracker = { lastFootX: entity.x, lastFootY: entity.y, lastStepTime: 0, alternate: false };
+        bloodFootprintTracker.set(trackId, tracker);
+    }
+
+    const now = Date.now();
+    const distSinceLast = Math.hypot(entity.x - tracker.lastFootX, entity.y - tracker.lastFootY);
+
+    // Leave a footprint every ~25px of movement (roughly one step)
+    if (distSinceLast > 25 && now - tracker.lastStepTime > 150) {
+        tracker.lastFootX = entity.x;
+        tracker.lastFootY = entity.y;
+        tracker.lastStepTime = now;
+        tracker.alternate = !tracker.alternate; // Alternate left/right foot
+
+        // Offset footprint slightly to the side based on movement direction
+        const moveAngle = entity.movementAngle || entity.angle || 0;
+        const perpAngle = moveAngle + Math.PI / 2;
+        const offset = tracker.alternate ? 6 : -6;
+        const fx = entity.x + Math.cos(perpAngle) * offset;
+        const fy = entity.y + Math.sin(perpAngle) * offset;
+
+        // Small blood dot footprint
+        const bloodColor = entity.isZombie ? '#5a7d59' : settings.bloodColor;
+        const rgb = hexToRgb(bloodColor);
+        window.bloodDecalManager.stampDot(fx, fy, 2 + bloodLevel * 2, `rgba(${rgb.r},${rgb.g},${rgb.b},0.5)`);
+    }
+}
+
+// --- Corpse Bleeding ---
+// Settled corpses slowly leak blood into pools
+export function updateCorpseBleeding(corpse, now) {
+    if (!corpse || !corpse.points || corpse.points.length === 0) return;
+    if (corpse._lastBleedTime && now - corpse._lastBleedTime < 2000) return;
+    corpse._lastBleedTime = now;
+
+    // Get corpse center
+    const cx = corpse.points.reduce((sum, p) => sum + p.x, 0) / corpse.points.length;
+    const cy = corpse.points.reduce((sum, p) => sum + p.y, 0) / corpse.points.length;
+
+    // Create a small blood pool under the corpse occasionally
+    if (Math.random() < 0.3) {
+        particles.push(new BloodPool(cx + (Math.random() - 0.5) * 20, cy + (Math.random() - 0.5) * 20, 8 + Math.random() * 6, corpse.color || settings.bloodColor));
+    }
+
+    // Emit a few blood droplets
+    for (let i = 0; i < 2; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 1.5 + 0.5;
+        particles.push(new BloodParticle(cx, cy, Math.cos(angle) * speed, Math.sin(angle) * speed, Math.random() * 1.5 + 0.5, 'droplet', corpse.color));
+    }
+}
+
 import { Particle } from './particle.js';
 import { particles, world } from './world.js';
 import { RagdollPoint, RagdollStick } from './ragdoll.js';
@@ -321,9 +461,9 @@ export class BloodParticle extends Particle {
             this.smearDuration = 5; // Short duration to settle quickly
         }
         
-        // Larger particles create pools
+        // Larger particles create expanding blood pools
         if (this.size > 1.5) {
-            this.poolSize = this.size * 0.5;
+            particles.push(new BloodPool(this.x, this.y, this.size * 3));
         }
     }
 
