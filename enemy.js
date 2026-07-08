@@ -1300,8 +1300,9 @@ export default class Enemy {
 
         // Stage 3: Terminal — bloody puke, health draining, barely moving
         if (this.infectionStage >= 3) {
-            // Health slowly drains in terminal stage
-            this.health -= 0.05;
+            // Health slowly drains in terminal stage — but can't drop below 1
+            // so the NPC always survives long enough to turn at infectionProgress 100
+            this.health = Math.max(1, this.health - 0.05);
             // Bloody puke particles are handled in _tryPuke via infectionStage check
         }
 
@@ -1502,9 +1503,11 @@ export default class Enemy {
                     knockback: 0, // No knockback — they're being held
                 });
 
-                // Zombify on death from grabbing
-                if (target.health <= 0 && target.zombify) {
-                    target.zombify();
+                // Infect on death from grabbing — starts the slow staged infection
+                if (target.health <= 0 && target.infect) {
+                    // Heal them slightly so infection can progress instead of staying dead
+                    target.health = Math.max(target.health, 1);
+                    target.infect();
                 }
             }
 
