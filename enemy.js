@@ -182,6 +182,7 @@ export default class Enemy {
         this.lastPukeTime = 0;
         this.stressDecayRate = 0.5;
         this.pukeCooldown = 8000;
+        this._hasBeenShot = false;       // First time being shot triggers immediate puke
 
         // --- Infection System (staged zombification) ---
         this.isInfected = false;          // Has been injected/bitten — will turn eventually
@@ -443,6 +444,10 @@ export default class Enemy {
             if (now - this.lastTearTime > painTearsInterval) {
                 this.emitTears();
                 this.lastTearTime = now;
+            }
+            // Continue puking even while in shock — pain pukes don't stop for stun
+            if (this.isPuking) {
+                this._tryPuke(now);
             }
             return; // Skip AI and movement logic
         }
@@ -1057,6 +1062,7 @@ export default class Enemy {
         createBloodSplatter(this.x, this.y, amount, impactAngle, { bloodyMess: options.bloodyMess });
 
         if (wasAlive && this.health <= 0) {
+            // --- NPC DIED ---
             if (options.isHeadshot) {
                 this.deathType = 'headshot';
             } else {
@@ -1070,16 +1076,27 @@ export default class Enemy {
                 if (distToOwner < 280 && this.shotgunDamageAccumulator.totalDamage >= damageThreshold) {
                     this.deathType = 'head_exploded';
                 }
-            } else if (wasAlive && this.health > 0 && !this.isZombie) { // If it survived and is not a zombie
-                const minPainShockDuration = 200;
-                const maxPainShockDuration = 700;
-                this.shockTime = Math.max(this.shockTime, Date.now() + minPainShockDuration + Math.random() * (maxPainShockDuration - minPainShockDuration));
-                this.reactionFlash = { type: 'fear', time: Date.now() };
             }
 
             if (options.isHeadshot && !this.isBleeding) {
                 this.isBleeding = true;
                 this.lastBloodDripTime = Date.now();
+            }
+        } else if (wasAlive && this.health > 0 && !this.isZombie) {
+            // --- NPC SURVIVED ---
+            const minPainShockDuration = 200;
+            const maxPainShockDuration = 700;
+            this.shockTime = Math.max(this.shockTime, Date.now() + minPainShockDuration + Math.random() * (maxPainShockDuration - minPainShockDuration));
+            this.reactionFlash = { type: 'fear', time: Date.now() };
+
+            // First time being shot — the shock of being wounded makes them puke
+            if (!this._hasBeenShot) {
+                this._hasBeenShot = true;
+                const now = Date.now();
+                this.isPuking = true;
+                this.pukeEndTime = now + 1200 + Math.random() * 600;
+                this.lastPukeTime = now;
+                this.stressLevel = Math.max(this.stressLevel, 70);
             }
         }
     }
