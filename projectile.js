@@ -79,6 +79,36 @@ export default class Projectile {
         this.collisionRadius = this.radius * Math.sqrt(this.bulletSize); // Square root for more balanced scaling
         this.knockback = options.knockback || 0;
         
+        // --- New wacky experimental properties ---
+        this.gravityWell = options.gravityWell || false;       // Pulls enemies toward projectile path
+        this.gravityWellRadius = options.gravityWellRadius || 100;
+        this.gravityWellForce = options.gravityWellForce || 0.5;
+        this.shrinkRay = options.shrinkRay || false;            // Shrinks hit enemies
+        this.confusionOnHit = options.confusionOnHit || false;  // Hit enemies attack each other
+        this.confusionDuration = options.confusionDuration || 5000;
+        this.vampireOnHit = options.vampireOnHit || false;      // Heals shooter on hit
+        this.vampireHealAmount = options.vampireHealAmount || 5;
+        this.chainLightning = options.chainLightning || false;  // Lightning chains to nearby enemies
+        this.chainRange = options.chainRange || 150;
+        this.chainCount = options.chainCount || 3;
+        this.chainDamage = options.chainDamage || 15;
+        this.blackHoleOnHit = options.blackHoleOnHit || false;  // Creates a temporary singularity
+        this.blackHoleRadius = options.blackHoleRadius || 200;
+        this.blackHoleDuration = options.blackHoleDuration || 1000;
+        this.blackHoleForce = options.blackHoleForce || 0.8;
+        this.ricochetFred = options.ricochetFred || false;      // Bounces toward nearest enemy after hit
+        this.frostOnHit = options.frostOnHit || false;          // Freezes enemy in place
+        this.frostDuration = options.frostDuration || 3000;
+        this.growRay = options.growRay || false;                // Enlarges hit enemy (makes them easier to hit but scarier)
+        this.growScale = options.growScale || 2.0;
+        this.mirrorShot = options.mirrorShot || false;          // Spawns a mirrored copy that fires backward
+        this.novaOnDeath = options.novaOnDeath || false;        // Explodes in 360° ring on expiry/impact
+        this.novaCount = options.novaCount || 12;
+        this.novaDamage = options.novaDamage || 10;
+        this.ghostBullet = options.ghostBullet || false;        // Phases through walls/buildings
+        this.boomerang = options.boomerang || false;            // Returns to shooter after max range
+        this.boomerangTurning = options.boomerangTurning || 0.05;
+        
         // Bouncing fix - ensure proper initialization
         this.bounceResistance = 0.1; // Minimum speed after bounce to continue bouncing
         this.lastBounceTime = 0;
@@ -161,6 +191,39 @@ export default class Projectile {
                 
                 const trackingStrength = this.seeksCops ? 0.15 : this.trackingStrength;
                 const newAngle = currentAngle + angleDiff * trackingStrength;
+                this.vx = Math.cos(newAngle) * this.speed;
+                this.vy = Math.sin(newAngle) * this.speed;
+            }
+        }
+        
+        
+        // --- Gravity Well: pull enemies toward projectile path ---
+        if (this.gravityWell) {
+            import('./world.js').then(w => {
+                for (const e of w.enemies) {
+                    if (!e || e.health <= 0) continue;
+                    const dx = this.x - e.x;
+                    const dy = this.y - e.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist > 0 && dist < this.gravityWellRadius) {
+                        const force = this.gravityWellForce * (1 - dist / this.gravityWellRadius);
+                        e.x += (dx / dist) * force;
+                        e.y += (dy / dist) * force;
+                    }
+                }
+            });
+        }
+        
+        // --- Boomerang: curve back toward shooter ---
+        if (this.boomerang && this.owner) {
+            const timeAlive = Date.now() - this.creationTime;
+            if (timeAlive > 500) { // Start returning after 500ms
+                const targetAngle = Math.atan2(this.owner.y - this.y, this.owner.x - this.x);
+                const currentAngle = Math.atan2(this.vy, this.vx);
+                let angleDiff = targetAngle - currentAngle;
+                if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                const newAngle = currentAngle + angleDiff * this.boomerangTurning;
                 this.vx = Math.cos(newAngle) * this.speed;
                 this.vy = Math.sin(newAngle) * this.speed;
             }
@@ -334,20 +397,159 @@ export default class Projectile {
         });
     }
 
-    handleHitEffects(hitX, hitY) {
-        // Explosion on hit
+    handleHitEffects(hitX, hitY, hitEnemy) {
+        // === Original hit effects ===
         if (this.explodeOnHit) {
             this.createExplosion(hitX, hitY, this.explosionRadius, this.explosionDamage);
         }
-        
-        // Fire area on hit
         if (this.fireAreaOnHit) {
             this.createFireArea(hitX, hitY, this.fireAreaRadius, this.fireAreaDuration);
         }
-        
-        // Toxic area on hit
         if (this.toxicOnHit) {
             this.createToxicArea(hitX, hitY, this.toxicRadius, this.toxicDuration);
+        }
+
+        // === New wacky hit effects ===
+
+        // Vampire: heal the shooter
+        if (this.vampireOnHit && this.owner && !this.owner.isDead) {
+            this.owner.health = Math.min(this.owner.maxHealth, this.owner.health + this.vampireHealAmount);
+        }
+
+        // Chain Lightning: arc to nearby enemies
+        if (this.chainLightning) {
+            import('./world.js').then(w => {
+                let lastX = hitX, lastY = hitY;
+                const hit = new Set();
+                if (hitEnemy) hit.add(hitEnemy);
+                for (let i = 0; i < this.chainCount; i++) {
+                    let closest = null, closestDist = this.chainRange;
+                    for (const e of w.enemies) {
+                        if (!e || e.health <= 0 || hit.has(e)) continue;
+                        const d = Math.hypot(lastX - e.x, lastY - e.y);
+                        if (d < closestDist) { closestDist = d; closest = e; }
+                    }
+                    if (!closest) break;
+                    hit.add(closest);
+                    closest.takeDamage(this.chainDamage, Math.atan2(closest.y - lastY, closest.x - lastX), {
+                        weaponName: this.weaponName + ' (Chain)', owner: this.owner
+                    });
+                    w.particles.push(new BounceSparkParticle(closest.x, closest.y, 0, 0));
+                    lastX = closest.x;
+                    lastY = closest.y;
+                }
+            });
+        }
+
+        // Black Hole: create a temporary singularity that sucks enemies in
+        if (this.blackHoleOnHit) {
+            import('./world.js').then(w => {
+                const start = Date.now();
+                const pull = () => {
+                    if (Date.now() - start > this.blackHoleDuration) return;
+                    for (const e of w.enemies) {
+                        if (!e || e.health <= 0) continue;
+                        const dx = hitX - e.x;
+                        const dy = hitY - e.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > 0 && dist < this.blackHoleRadius) {
+                            const force = this.blackHoleForce * (1 - dist / this.blackHoleRadius) * 3;
+                            e.x += (dx / dist) * force;
+                            e.y += (dy / dist) * force;
+                        }
+                    }
+                    requestAnimationFrame(pull);
+                };
+                pull();
+            });
+        }
+
+        // Nova: explode in a 360° ring of projectiles on death
+        if (this.novaOnDeath) {
+            import('./world.js').then(w => {
+                for (let i = 0; i < this.novaCount; i++) {
+                    const angle = (i / this.novaCount) * Math.PI * 2;
+                    w.projectiles.push(new Projectile(hitX, hitY, angle, {
+                        radius: this.radius,
+                        damage: this.novaDamage,
+                        speed: 15,
+                        weaponName: this.weaponName + ' (Nova)',
+                        owner: this.owner,
+                        maxSpeed: 15,
+                        knockback: 1
+                    }));
+                }
+            });
+        }
+
+        // Mirror Shot: spawn a backward-firing copy
+        if (this.mirrorShot) {
+            import('./world.js').then(w => {
+                const reverseAngle = Math.atan2(-this.vy, -this.vx);
+                w.projectiles.push(new Projectile(hitX, hitY, reverseAngle, {
+                    radius: this.radius,
+                    damage: this.damage,
+                    speed: this.speed,
+                    weaponName: this.weaponName + ' (Mirror)',
+                    owner: this.owner,
+                    knockback: this.knockback,
+                    mirrorShot: false,
+                    novaOnDeath: false,
+                }));
+            });
+        }
+
+        // Frost: freeze the hit enemy in place
+        if (this.frostOnHit && hitEnemy) {
+            hitEnemy._frozenUntil = Date.now() + this.frostDuration;
+            hitEnemy._frozenSpeed = hitEnemy.speed;
+            hitEnemy.speed = 0;
+        }
+
+        // Shrink Ray: shrink the hit enemy
+        if (this.shrinkRay && hitEnemy) {
+            hitEnemy.radius = Math.max(5, hitEnemy.radius * 0.5);
+        }
+
+        // Growth Hormone: enlarge the hit enemy
+        if (this.growRay && hitEnemy) {
+            hitEnemy.radius = Math.min(80, hitEnemy.radius * this.growScale);
+        }
+
+        // Confusion: hit enemy goes berserk and attacks allies
+        if (this.confusionOnHit && hitEnemy) {
+            hitEnemy._confusedUntil = Date.now() + this.confusionDuration;
+            hitEnemy.state = 'CHASING';
+            import('./world.js').then(w => {
+                let closest = null, closestDist = Infinity;
+                for (const e of w.enemies) {
+                    if (!e || e === hitEnemy || e.health <= 0 || e._confusedUntil) continue;
+                    const d = Math.hypot(hitEnemy.x - e.x, hitEnemy.y - e.y);
+                    if (d < closestDist) { closestDist = d; closest = e; }
+                }
+                if (closest) {
+                    hitEnemy.civilianTarget = closest;
+                    hitEnemy.policeTarget = closest;
+                }
+            });
+        }
+
+        // Ricochet Freddy: bounce toward nearest enemy after hit
+        if (this.ricochetFred) {
+            import('./world.js').then(w => {
+                let closest = null, closestDist = Infinity;
+                for (const e of w.enemies) {
+                    if (!e || e === hitEnemy || e.health <= 0) continue;
+                    const d = Math.hypot(this.x - e.x, this.y - e.y);
+                    if (d < closestDist) { closestDist = d; closest = e; }
+                }
+                if (closest && this.bounceCount < this.maxBounces) {
+                    const angle = Math.atan2(closest.y - this.y, closest.x - this.x);
+                    this.vx = Math.cos(angle) * this.speed;
+                    this.vy = Math.sin(angle) * this.speed;
+                    this.bounceCount++;
+                }
+            });
         }
     }
 
@@ -465,6 +667,28 @@ export default class Projectile {
                 ctx.fillStyle = '#33ff33'; // Green for toxic
             } else if (this.bouncing) {
                 ctx.fillStyle = '#00ccff'; // Cyan for bouncing
+            } else if (this.vampireOnHit) {
+                ctx.fillStyle = '#cc00ff'; // Purple for vampire
+            } else if (this.chainLightning) {
+                ctx.fillStyle = '#ffff00'; // Yellow for lightning
+            } else if (this.frostOnHit) {
+                ctx.fillStyle = '#00aaff'; // Ice blue for frost
+            } else if (this.blackHoleOnHit) {
+                ctx.fillStyle = '#9933ff'; // Dark purple for black hole
+            } else if (this.gravityWell) {
+                ctx.fillStyle = '#ff66ff'; // Magenta for gravity
+            } else if (this.ghostBullet) {
+                ctx.fillStyle = 'rgba(255,255,255,0.4)'; // Translucent for ghost
+            } else if (this.boomerang) {
+                ctx.fillStyle = '#ffaa00'; // Amber for boomerang
+            } else if (this.novaOnDeath) {
+                ctx.fillStyle = '#ff44ff'; // Pink for nova
+            } else if (this.confusionOnHit) {
+                ctx.fillStyle = '#ff00aa'; // Hot pink for confusion
+            } else if (this.shrinkRay) {
+                ctx.fillStyle = '#aaff00'; // Lime for shrink
+            } else if (this.growRay) {
+                ctx.fillStyle = '#ff8800'; // Orange for growth
             } else {
                 ctx.fillStyle = this.color;
             }

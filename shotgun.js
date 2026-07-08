@@ -143,24 +143,11 @@ export class Shotgun extends Weapon {
             const projY = this.owner.y + Math.sin(projectileAngle) * muzzleDist;
 
             projectiles.push(new Projectile(projX, projY, projectileAngle, {
-                radius: stats.projectileRadius,
-                mass: stats.projectileMass,
-                damage: stats.damage,
-                speed: stats.projectileSpeed,
-                isHeadshot: Math.random() < stats.headshotChance,
+                ...stats,
                 weaponName: this.name,
-                shotId: shotId,
                 owner: this.owner,
-                piercing: stats.piercing,
-                tracking: stats.tracking,
-                // New projectile behavior options
-                bulletSize: stats.bulletSize,
-                pathType: stats.pathType,
-                pathAmplitude: stats.pathAmplitude,
-                pathFrequency: stats.pathFrequency,
-                spiralRadius: stats.spiralRadius,
-                maxSpeed: stats.maxSpeed,
-                minSpeed: stats.minSpeed,
+                shotId: shotId,
+                isHeadshot: Math.random() < stats.headshotChance,
             }));
         }
     }

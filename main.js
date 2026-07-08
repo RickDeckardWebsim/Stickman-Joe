@@ -1265,7 +1265,7 @@ function gameLoop() {
                     }
                     
                     // Handle hit effects (explosion, fire, toxic)
-                    p.handleHitEffects(p.x, p.y);
+                    p.handleHitEffects(p.x, p.y, enemy);
                     
                     // Handle split projectiles
                     if (p.splitOnHit) {
@@ -1278,9 +1278,14 @@ function gameLoop() {
                         p.stuckOffset = { x: p.x - enemy.x, y: p.y - enemy.y };
                         // Don't remove projectile, but stop its movement in the update loop
                     } else if (!p.piercing || p.hasHit) {
-                        projectiles.splice(i, 1);
-                        projectileRemoved = true;
-                        break;
+                        // Ricochet Freddy projectiles survive to bounce to next target
+                        if (p.ricochetFred && p.bounceCount < p.maxBounces) {
+                            p.hasHit = false; // Reset so it can hit again
+                        } else {
+                            projectiles.splice(i, 1);
+                            projectileRemoved = true;
+                            break;
+                        }
                     } else {
                         p.hasHit = true; // Mark as hit for piercing projectiles
                     }
@@ -1320,8 +1325,8 @@ function gameLoop() {
         
         if (projectileRemoved) continue;
 
-        // Check collision with buildings
-        if (world.city) {
+        // Check collision with buildings (ghost bullets phase through)
+        if (world.city && !p.ghostBullet) {
             for (const building of world.city.buildings) {
                 if (p.x >= building.x && p.x <= building.x + building.width &&
                     p.y >= building.y && p.y <= building.y + building.height) {
@@ -1367,24 +1372,26 @@ function gameLoop() {
         let hitNormal = { x: 0, y: 0 };
         let hitPos = { x: p.x, y: p.y };
 
-        if (p.x <= world.wallThickness) {
-            hit = true;
-            hitNormal.x = 1;
-            hitPos.x = world.wallThickness;
-        } else if (p.x >= world.width - world.wallThickness) {
-            hit = true;
-            hitNormal.x = -1;
-            hitPos.x = world.width - world.wallThickness;
-        }
+        if (!p.ghostBullet) {
+            if (p.x <= world.wallThickness) {
+                hit = true;
+                hitNormal.x = 1;
+                hitPos.x = world.wallThickness;
+            } else if (p.x >= world.width - world.wallThickness) {
+                hit = true;
+                hitNormal.x = -1;
+                hitPos.x = world.width - world.wallThickness;
+            }
 
-        if (p.y <= world.wallThickness) {
-            hit = true;
-            hitNormal.y = 1;
-            hitPos.y = world.wallThickness;
-        } else if (p.y >= world.height - world.wallThickness) {
-            hit = true;
-            hitNormal.y = -1;
-            hitPos.y = world.height - world.wallThickness;
+            if (p.y <= world.wallThickness) {
+                hit = true;
+                hitNormal.y = 1;
+                hitPos.y = world.wallThickness;
+            } else if (p.y >= world.height - world.wallThickness) {
+                hit = true;
+                hitNormal.y = -1;
+                hitPos.y = world.height - world.wallThickness;
+            }
         }
         
         if (hit) {

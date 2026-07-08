@@ -146,8 +146,22 @@ const attachmentTypes = {
         ]
     },
     experimental: {
-        names: ['Cop Seeker', 'Civilian Hunter', 'Big Bore', 'Rapid Fire', 'Bleeding Edge', 'Slow Mo', 'Speed Demon', 'Multi Shot', 'Splitter', 'Bouncer', 'Zigzag', 'Spiral Storm', 'Wave Rider', 'Size Matters', 'Velocity Chaos', 'Impact Driver', 'Explosive Rounds', 'Fire Starter', 'Toxic Waste', 'Time Bomb', 'Area Denial', 'Chain Reaction'],
+        names: [
+            // Original 22
+            'Cop Seeker', 'Civilian Hunter', 'Big Bore', 'Rapid Fire', 'Bleeding Edge', 'Slow Mo', 'Speed Demon',
+            'Multi Shot', 'Splitter', 'Bouncer', 'Zigzag', 'Spiral Storm', 'Wave Rider', 'Size Matters',
+            'Velocity Chaos', 'Impact Driver', 'Explosive Rounds', 'Fire Starter', 'Toxic Waste', 'Time Bomb',
+            'Area Denial', 'Chain Reaction',
+            // NEW: 30 wacky experimental mods
+            'Gravity Gun', 'Black Hole Bullet', 'Vampire Rounds', 'Chain Lightning', 'Frostbite',
+            'Shrink Ray', 'Growth Hormone', 'Confusion Dart', 'Ricochet Freddy', 'Nova Bomb',
+            'Ghost Bullet', 'Boomerang Shot', 'Mirror Shot', 'Earthquake Maker', 'Zombie Spore',
+            'Rubber Band Ball', 'Cluster Bomb', 'Pulse Wave', 'Magnet Core', 'Flower Bloom',
+            'Ping Pong', 'Drunk Missile', 'Overclocked Phaser', 'Dead Man Switch', 'Bubble Gun',
+            'Lava Launcher', 'Tornado Spin', 'Gravity Flip', 'Antimatter Round', 'Party Popper'
+        ],
         modifiers: [
+            // === Original 22 (unchanged) ===
             { seeksCops: true, tracking: true, projectileSpeed: 1.2, reloadSpeed: 1.0, knockback: 1.0 },
             { civilianDamage: 2.0, damage: 0.8, reloadSpeed: 1.0, knockback: 1.0 },
             { projectileSize: 2.5, damage: 1.8, fireRate: -200, bulletSize: 2.0, reloadSpeed: 0.6, knockback: 2.2 },
@@ -169,7 +183,99 @@ const attachmentTypes = {
             { toxicOnHit: true, toxicRadius: 80, toxicDamage: 8, toxicDuration: 10000, damage: 0.9, reloadSpeed: 0.9, knockback: 1.0 },
             { timedExplosion: true, timedExplosionDelay: 1500, explosionRadius: 150, explosionDamage: 80, reloadSpeed: 0.7, knockback: 1.2 },
             { timedFireArea: true, timedFireInterval: 2000, fireAreaRadius: 60, fireAreaDuration: 4000, reloadSpeed: 0.85, knockback: 1.0 },
-            { timedToxic: true, timedToxicInterval: 1800, toxicRadius: 70, toxicDuration: 8000, bouncing: true, reloadSpeed: 0.8, knockback: 1.0 }
+            { timedToxic: true, timedToxicInterval: 1800, toxicRadius: 70, toxicDuration: 8000, bouncing: true, reloadSpeed: 0.8, knockback: 1.0 },
+
+            // === NEW 30: Wacky, zany, unique experimental mods ===
+
+            // 23. Gravity Gun — bullets pull enemies toward their flight path
+            { gravityWell: true, gravityWellRadius: 120, gravityWellForce: 0.6, damage: 0.8, reloadSpeed: 0.9, knockback: 0.5 },
+
+            // 24. Black Hole Bullet — on hit, creates a singularity that sucks everything in then collapses
+            { blackHoleOnHit: true, blackHoleRadius: 200, blackHoleDuration: 1200, blackHoleForce: 0.9, damage: 0.5, reloadSpeed: 0.6, knockback: 0.1 },
+
+            // 25. Vampire Rounds — every hit heals the shooter
+            { vampireOnHit: true, vampireHealAmount: 8, damage: 1.2, reloadSpeed: 1.0, knockback: 1.0, bleedChance: 0.2 },
+
+            // 26. Chain Lightning — on hit, lightning arcs to nearby enemies
+            { chainLightning: true, chainRange: 180, chainCount: 4, chainDamage: 20, damage: 1.0, reloadSpeed: 0.9, knockback: 0.8 },
+
+            // 27. Frostbite — freezes hit enemies solid for 3 seconds
+            { frostOnHit: true, frostDuration: 3000, damage: 0.7, reloadSpeed: 0.95, knockback: 0.5, projectileSpeed: 1.1 },
+
+            // 28. Shrink Ray — hit enemies shrink to half size (easier to hit, less threatening)
+            { shrinkRay: true, damage: 0.3, reloadSpeed: 1.1, knockback: 0.3, projectileSpeed: 1.5, accuracy: 1.3 },
+
+            // 29. Growth Hormone — hit enemies DOUBLE in size (hilarious, scary, easier to hit)
+            { growRay: true, growScale: 2.5, damage: 0.5, reloadSpeed: 1.0, knockback: 0.8, bulletSize: 1.3 },
+
+            // 30. Confusion Dart — hit enemies go berserk and attack each other
+            { confusionOnHit: true, confusionDuration: 6000, damage: 0.4, reloadSpeed: 1.0, knockback: 0.2, projectileSpeed: 1.3 },
+
+            // 31. Ricochet Freddy — after hitting an enemy, bounces toward the NEAREST other enemy
+            { ricochetFred: true, bouncing: true, maxBounces: 8, piercing: true, damage: 0.8, reloadSpeed: 1.0, knockback: 1.2 },
+
+            // 32. Nova Bomb — on death/expiry, explodes in a 360° ring of projectiles
+            { novaOnDeath: true, novaCount: 16, novaDamage: 12, damage: 1.0, projectileSpeed: 0.7, reloadSpeed: 0.6, knockback: 1.5 },
+
+            // 33. Ghost Bullet — phases through walls and buildings, only hits enemies
+            { ghostBullet: true, piercing: true, damage: 1.3, reloadSpeed: 0.9, knockback: 1.0, accuracy: 1.2 },
+
+            // 34. Boomerang Shot — bullet flies out then curves back to the shooter
+            { boomerang: true, boomerangTurning: 0.04, damage: 1.5, piercing: true, reloadSpeed: 1.2, knockback: 1.5, projectileSpeed: 1.3 },
+
+            // 35. Mirror Shot — fires a second bullet backward at the same time
+            { mirrorShot: true, damage: 0.9, reloadSpeed: 1.0, knockback: 1.0, accuracy: 0.9 },
+
+            // 36. Earthquake Maker — massive knockback + screen shake on hit, low damage
+            { knockback: 8.0, damage: 0.5, bulletSize: 2.0, reloadSpeed: 0.7, fireRate: -400, projectileSpeed: 0.6 },
+
+            // 37. Zombie Spore — hit enemies have a chance to turn into zombies on death
+            { onHitEffect: 'zombify', damage: 0.6, bleedChance: 0.5, reloadSpeed: 0.9, knockback: 0.3, toxicOnHit: true, toxicRadius: 40, toxicDamage: 2, toxicDuration: 3000 },
+
+            // 38. Rubber Band Ball — insanely bouncy, gains speed with each bounce
+            { bouncing: true, maxBounces: 15, projectileSpeed: 1.5, damage: 0.5, reloadSpeed: 1.3, knockback: 2.0, bulletSize: 1.5 },
+
+            // 39. Cluster Bomb — splits into 6 mini-bombs mid-flight that each explode
+            { splitOnHit: true, explodeOnHit: true, explosionRadius: 60, explosionDamage: 30, damage: 0.8, fireRate: -200, reloadSpeed: 0.5, knockback: 1.8 },
+
+            // 40. Pulse Wave — emits a shockwave that pushes ALL nearby enemies away
+            { knockback: 6.0, bulletSize: 0.5, damage: 0.3, fireRate: -100, reloadSpeed: 1.1, accuracy: 1.5, projectileSpeed: 2.0 },
+
+            // 41. Magnet Core — bullets curve toward the nearest enemy aggressively
+            { tracking: true, trackingStrength: 3.0, damage: 1.1, reloadSpeed: 0.9, knockback: 1.0, projectileSpeed: 1.4 },
+
+            // 42. Flower Bloom — bullet splits into 8 petals in a flower pattern on impact
+            { splitOnHit: true, projectileCount: 0.3, damage: 0.6, reloadSpeed: 1.1, knockback: 0.8, bleedChance: 0.3, bulletSize: 1.5 },
+
+            // 43. Ping Pong — bounces rapidly between walls with extreme speed
+            { bouncing: true, maxBounces: 20, projectileSpeed: 3.0, damage: 0.4, reloadSpeed: 1.5, knockback: 1.0, maxSpeed: 80 },
+
+            // 44. Drunk Missile — wobbles erratically, impossible to predict, surprisingly deadly
+            { pathType: 'zigzag', pathAmplitude: 50, pathFrequency: 0.5, damage: 1.8, reloadSpeed: 1.0, knockback: 1.5, accuracy: 0.3 },
+
+            // 45. Overclocked Phaser — insane fire rate, bullets phase through walls, low damage
+            { ghostBullet: true, fireRate: 500, damage: 0.3, reloadSpeed: 2.5, knockback: 0.3, accuracy: 0.6, projectileSpeed: 2.5, piercing: true },
+
+            // 46. Dead Man Switch — if you die, all your loaded bullets explode at once
+            { timedExplosion: true, timedExplosionDelay: 5000, explosionRadius: 200, explosionDamage: 100, damage: 0.8, reloadSpeed: 0.5, knockback: 2.0 },
+
+            // 47. Bubble Gun — bullets are slow, huge, bouncy, and hilarious
+            { bulletSize: 4.0, bouncing: true, maxBounces: 10, projectileSpeed: 0.3, damage: 0.5, reloadSpeed: 1.8, knockback: 3.0, maxSpeed: 8 },
+
+            // 48. Lava Launcher — leaves a trail of fire as it flies, explodes on impact
+            { fireAreaOnHit: true, fireAreaRadius: 80, fireAreaDuration: 8000, explodeOnHit: true, explosionRadius: 80, explosionDamage: 40, damage: 1.2, reloadSpeed: 0.5, knockback: 1.5 },
+
+            // 49. Tornado Spin — spirals outward, hitting everything in a huge radius
+            { pathType: 'spiral', spiralRadius: 120, pathFrequency: 0.08, piercing: true, damage: 0.8, reloadSpeed: 0.8, knockback: 1.2, bulletSize: 1.5 },
+
+            // 50. Gravity Flip — reversed gravity on hit, enemies fly UPWARD
+            { knockback: -5.0, damage: 1.0, reloadSpeed: 0.9, bulletSize: 1.5, fireRate: -100, projectileSpeed: 1.2 },
+
+            // 51. Antimatter Round — deletes a chunk of the world on impact (massive explosion + fire + toxic)
+            { explodeOnHit: true, explosionRadius: 250, explosionDamage: 150, fireAreaOnHit: true, fireAreaRadius: 150, fireAreaDuration: 10000, toxicOnHit: true, toxicRadius: 100, toxicDamage: 15, toxicDuration: 12000, damage: 2.0, reloadSpeed: 0.2, knockback: 5.0, fireRate: -800 },
+
+            // 52. Party Popper — fires a burst of confetti-colored bouncing bullets in all directions
+            { projectileCount: 8, bouncing: true, maxBounces: 6, damage: 0.3, accuracy: 0.2, reloadSpeed: 1.5, knockback: 2.0, bulletSize: 1.8, fireRate: -200 }
         ]
     }
 };
@@ -370,6 +476,64 @@ function _generateDescription(modifiers, type) {
                 break;
             case 'laserSight':
                 if (value) effects.push(`Adds a ${value} laser sight`);
+                break;
+            // --- New wacky experimental descriptions ---
+            case 'gravityWell':
+                if (value) effects.push('Bullets pull enemies toward their path');
+                break;
+            case 'gravityWellRadius':
+                effects.push(`${value.toFixed(0)}px gravity pull radius`);
+                break;
+            case 'gravityWellForce':
+                effects.push(`${(value * 100).toFixed(0)}% gravity pull force`);
+                break;
+            case 'blackHoleOnHit':
+                if (value) effects.push('Creates a singularity on impact');
+                break;
+            case 'blackHoleRadius':
+                effects.push(`${value.toFixed(0)}px black hole radius`);
+                break;
+            case 'vampireOnHit':
+                if (value) effects.push('Heals shooter on hit');
+                break;
+            case 'vampireHealAmount':
+                effects.push(`+${value.toFixed(0)} HP per hit`);
+                break;
+            case 'chainLightning':
+                if (value) effects.push('Lightning chains between enemies');
+                break;
+            case 'chainCount':
+                effects.push(`chains to ${value.toFixed(0)} enemies`);
+                break;
+            case 'frostOnHit':
+                if (value) effects.push('Freezes enemies solid');
+                break;
+            case 'shrinkRay':
+                if (value) effects.push('Shrinks hit enemies');
+                break;
+            case 'growRay':
+                if (value) effects.push('Enlarges hit enemies');
+                break;
+            case 'confusionOnHit':
+                if (value) effects.push('Hit enemies go berserk and attack allies');
+                break;
+            case 'ricochetFred':
+                if (value) effects.push('Ricochets toward nearest enemy after hit');
+                break;
+            case 'novaOnDeath':
+                if (value) effects.push('Explodes in 360° ring on impact');
+                break;
+            case 'ghostBullet':
+                if (value) effects.push('Phases through walls and buildings');
+                break;
+            case 'boomerang':
+                if (value) effects.push('Bullet returns to shooter');
+                break;
+            case 'mirrorShot':
+                if (value) effects.push('Fires a mirrored copy backward');
+                break;
+            case 'onHitEffect':
+                if (value === 'zombify') effects.push('Turns killed enemies into zombies');
                 break;
         }
     });
@@ -582,6 +746,35 @@ export class Weapon {
             timedToxicInterval: 2500,
             // Knockback
             knockback: this.baseKnockback,
+            // --- New wacky experimental properties ---
+            gravityWell: false,
+            gravityWellRadius: 100,
+            gravityWellForce: 0.5,
+            shrinkRay: false,
+            confusionOnHit: false,
+            confusionDuration: 5000,
+            vampireOnHit: false,
+            vampireHealAmount: 5,
+            chainLightning: false,
+            chainRange: 150,
+            chainCount: 3,
+            chainDamage: 15,
+            blackHoleOnHit: false,
+            blackHoleRadius: 200,
+            blackHoleDuration: 1000,
+            blackHoleForce: 0.8,
+            ricochetFred: false,
+            frostOnHit: false,
+            frostDuration: 3000,
+            growRay: false,
+            growScale: 2.0,
+            mirrorShot: false,
+            novaOnDeath: false,
+            novaCount: 12,
+            novaDamage: 10,
+            ghostBullet: false,
+            boomerang: false,
+            boomerangTurning: 0.05,
         };
 
         // Apply attachment modifiers
@@ -601,11 +794,14 @@ export class Weapon {
                     baseStats.laserSight = value;
                 } else if (typeof value === 'number' && ![
                     'projectileCount', 'piercing', 'tracking', 'trackingStrength', 'seeksCops', 'splitOnHit', 'bouncing', 
-                    'bloodyMess', 'dismemberChance', // Add new modifiers here
+                    'bloodyMess', 'dismemberChance',
                     'bulletSize', 'pathAmplitude', 'pathFrequency', 'spiralRadius', 'maxSpeed', 'minSpeed', 
                     'reloadSpeed', 'knockback', 'maxBounces', 'explosionRadius', 'explosionDamage',
                     'fireAreaRadius', 'fireAreaDuration', 'toxicRadius', 'toxicDamage', 'toxicDuration',
-                    'timedFireInterval', 'timedExplosionDelay', 'timedToxicInterval'
+                    'timedFireInterval', 'timedExplosionDelay', 'timedToxicInterval',
+                    'gravityWellRadius', 'gravityWellForce', 'confusionDuration', 'vampireHealAmount',
+                    'chainRange', 'chainCount', 'chainDamage', 'blackHoleRadius', 'blackHoleDuration',
+                    'blackHoleForce', 'frostDuration', 'growScale', 'novaCount', 'novaDamage', 'boomerangTurning'
                 ].includes(key)) {
                     if (key === 'fireRate') {
                         baseStats[key] += value; // Additive for fire rate
@@ -820,49 +1016,11 @@ export class Weapon {
             projectileAngle += (Math.random() - 0.5) * spreadAmount;
             
             projectiles.push(new Projectile(projX, projY, projectileAngle, {
-                radius: stats.projectileRadius,
-                mass: stats.projectileMass,
-                damage: stats.damage,
-                speed: stats.projectileSpeed,
-                isHeadshot: Math.random() < stats.headshotChance,
+                ...stats,
                 weaponName: this.name,
                 owner: this.owner,
-                piercing: stats.piercing,
-                tracking: stats.tracking,
-                trackingStrength: stats.trackingStrength,
-                seeksCops: stats.seeksCops,
-                civilianDamage: stats.civilianDamage,
-                bleedChance: stats.bleedChance,
-                bloodyMess: stats.bloodyMess,
-                dismemberChance: stats.dismemberChance,
-                // New projectile behavior options
-                bulletSize: stats.bulletSize,
-                pathType: stats.pathType,
-                pathAmplitude: stats.pathAmplitude,
-                pathFrequency: stats.pathFrequency,
-                spiralRadius: stats.spiralRadius,
-                maxSpeed: stats.maxSpeed,
-                minSpeed: stats.minSpeed,
-                // Hit reaction modifiers
-                explodeOnHit: stats.explodeOnHit,
-                explosionRadius: stats.explosionRadius,
-                explosionDamage: stats.explosionDamage,
-                fireAreaOnHit: stats.fireAreaOnHit,
-                fireAreaRadius: stats.fireAreaRadius,
-                fireAreaDuration: stats.fireAreaDuration,
-                toxicOnHit: stats.toxicOnHit,
-                toxicRadius: stats.toxicRadius,
-                toxicDamage: stats.toxicDamage,
-                toxicDuration: stats.toxicDuration,
-                // Timer-based effects
-                timedFireArea: stats.timedFireArea,
-                timedFireInterval: stats.timedFireInterval,
-                timedExplosion: stats.timedExplosion,
-                timedExplosionDelay: stats.timedExplosionDelay,
-                timedToxic: stats.timedToxic,
-                timedToxicInterval: stats.timedToxicInterval,
-                // Beam-specific options
-                knockback: stats.knockback,
+                isHeadshot: Math.random() < stats.headshotChance,
+                shotId: null,
             }));
         }
     }
@@ -875,374 +1033,6 @@ export class Weapon {
 
         ctx.fillStyle = this.color;
         ctx.fillRect(gunX, gunY, this.width, this.height);
-    }
-}
-
-export class Rifle extends Weapon {
-    constructor(owner) {
-        super(owner);
-        this.name = 'Rifle';
-        this.icon = './rifle_icon.png';
-        this.width = 52;
-        this.height = 10;
-        this.color = '#383838';
-        this.recoilAmount = 10;
-        this.fireRate = 150; // ms between shots
-        this.lastShotTime = 0;
-        this.lastMousePos = { x: 0, y: 0 };
-        
-        // Ammo & Reloading
-        this.ammo = 15;
-        this.magSize = 15;
-        this.reserveAmmo = 60;
-        this.reloadTime = 1250; // ms
-        this.isReloading = false;
-        this.reloadStartTime = 0;
-        this.reloadAnimProgress = 0;
-        
-        // Properties to be overridden by subclasses
-        this.name = 'Rifle';
-        this.icon = './rifle_icon.png';
-        this.gripPoints = { backHand: { x: 10, y: 0 }, frontHand: { x: 30, y: 0 } };
-        this.shellSize = { width: 3, height: 6 };
-        this.soundVolume = 0.2;
-        this.soundPitchBase = 0.9;
-        this.soundPitchVariance = 0.1;
-        this.ejectionPortOffset = { x: 15, y: -(this.height / 2 + 2) };
-        this.headshotChance = 0.15;
-        this.accuracy = 0.85; // Good accuracy for rifle
-        
-        // Fire modes
-        this.availableFireModes = ['auto', 'burst', 'semi'];
-        this.fireMode = 'auto';
-        this.burstSize = 3;
-
-        // 6 mod slots for rifle
-        this.modSlots = ['receiver', 'barrel', 'magazine', 'sight', 'muzzle', 'grip', 'stock', 'ammo', 'rail'];
-        this.attachments = new Array(this.modSlots.length).fill(null);
-
-        this.baseKnockback = 4; // Higher knockback for rifle
-    }
-
-    draw(ctx) {
-        if (!this.owner) return; // Guard against null owner
-        
-        const gunX = this.owner.radius - this.recoil;
-        const gunY = -this.height / 2; // Centered vertically
-
-        const barrelColor = '#555';
-        const stockColor = '#282828';
-        const magazineColor = '#222';
-
-        // Stock
-        const stockWidth = 12;
-        const stockHeight = 8;
-        ctx.fillStyle = stockColor;
-        ctx.fillRect(gunX, gunY + (this.height - stockHeight) / 2, stockWidth, stockHeight);
-        
-        // Body (Receiver + Handguard)
-        const bodyWidth = 25;
-        const bodyHeight = this.height;
-        ctx.fillStyle = this.color; // Use the main weapon color for the body
-        ctx.fillRect(gunX + stockWidth, gunY, bodyWidth, bodyHeight);
-
-        // Barrel
-        const barrelWidth = 15;
-        const barrelHeight = 4;
-        ctx.fillStyle = barrelColor;
-        ctx.fillRect(gunX + stockWidth + bodyWidth, gunY + (this.height - barrelHeight) / 2, barrelWidth, barrelHeight);
-        // Magazine — slides out during reload
-        const magState = this._getMagDrawState();
-        if (magState.visible) {
-            const magWidth = 6;
-            const magHeight = 12;
-            ctx.fillStyle = magazineColor;
-            ctx.fillRect(gunX + stockWidth + 8, gunY + bodyHeight - 2 + magState.offsetY, magWidth, magHeight);
-        }
-    }
-}
-
-export class Pistol extends Weapon {
-    constructor(owner) {
-        super(owner);
-        this.name = 'Pistol';
-        this.icon = './pistol_icon.png';
-        this.width = 28;
-        this.height = 10;
-        this.color = '#222222';
-        this.recoilAmount = 6;
-        this.fireRate = 400; // Slower
-        this.lastShotTime = 0;
-        this.lastMousePos = { x: 0, y: 0 };
-        
-        // Ammo & Reloading
-        this.ammo = 9;
-        this.magSize = 9;
-        this.reserveAmmo = 45;
-        this.reloadTime = 900; // ms
-        this.isReloading = false;
-        this.reloadStartTime = 0;
-        this.reloadAnimProgress = 0;
-        
-        // Properties to be overridden by subclasses
-        this.name = 'Pistol';
-        this.icon = './pistol_icon.png';
-        this.gripPoints = { backHand: { x: 8, y: -4 }, frontHand: { x: 8, y: 4 } };
-        this.shellSize = { width: 2, height: 4 }; // Smaller
-        this.soundVolume = 0.15;
-        this.soundPitchBase = 1.1;
-        this.soundPitchVariance = 0.1;
-        this.ejectionPortOffset = { x: 10, y: -(this.height / 2 + 2) };
-        this.headshotChance = 0.10;
-        this.accuracy = 0.75; // Moderate accuracy for pistol
-        
-        // Fire modes
-        this.availableFireModes = ['semi', 'burst'];
-        this.fireMode = 'semi';
-        this.burstSize = 4;
-
-        // 5 mod slots for pistol + rail
-        this.modSlots = ['receiver', 'barrel', 'magazine', 'sight', 'muzzle', 'grip', 'ammo', 'rail'];
-        this.attachments = new Array(this.modSlots.length).fill(null);
-
-        this.baseKnockback = 2; // Lower knockback for pistol
-    }
-
-    draw(ctx) {
-        if (!this.owner) return; // Guard against null owner
-        
-        const gunX = this.owner.radius - this.recoil;
-        const gunY = -this.height / 2;
-
-        const slideColor = '#4a4a4a';
-        const gripColor = this.color;
-
-        // Grip
-        const gripWidth = 10;
-        const gripHeight = this.height;
-        ctx.fillStyle = gripColor;
-        ctx.fillRect(gunX, gunY, gripWidth, gripHeight);
-        
-        // Slide
-        const slideWidth = 20; // smaller than total width
-        const slideHeight = 8;
-        ctx.fillStyle = slideColor;
-        ctx.fillRect(gunX + gripWidth - 2, gunY + (gripHeight - slideHeight) / 2, slideWidth, slideHeight);
-    }
-}
-
-export class Shotgun extends Weapon {
-    constructor(owner) {
-        super(owner);
-        this.name = 'Shotgun';
-        this.icon = './shotgun_icon.png';
-        this.width = 55;
-        this.height = 14;
-        this.color = '#543d2b'; // Wood/metal color
-        this.recoilAmount = 25;
-        this.fireRate = 1000; // Pump action is slow
-        this.lastShotTime = 0;
-        this.lastMousePos = { x: 0, y: 0 };
-        this.pumpDuration = 400; // ms for the pump animation
-        this.pumpProgress = 0; // Goes from 1 down to 0
-        this.lastPumpTime = 0;
-        this.pelletCount = 8;
-        this.spreadAngle = Math.PI / 12; // 15 degrees total spread
-        
-        // Ammo & Reloading
-        this.ammo = 8;
-        this.magSize = 8;
-        this.reserveAmmo = 24;
-        this.reloadTime = 1500; // ms
-        this.isReloading = false;
-        this.reloadStartTime = 0;
-        this.reloadAnimProgress = 0;
-        
-        // Properties to be overridden by subclasses
-        this.name = 'Shotgun';
-        this.icon = './shotgun_icon.png';
-        this.gripPoints = { backHand: { x: 15, y: 0 }, frontHand: { x: 40, y: 0 } };
-        this.shellSize = { width: 4, height: 10 }; // Bigger shells
-        this.soundVolume = 0.4;
-        this.soundPitchBase = 0.8;
-        this.soundPitchVariance = 0.05;
-        this.soundName = 'shotgun_shoot';
-        this.ejectionPortOffset = { x: 20, y: -(this.height / 2 + 3) };
-        this.headshotChance = 0.05;
-        this.accuracy = 0.60; // Lower accuracy due to spread nature
-        
-        // Fire modes
-        this.availableFireModes = ['semi'];
-        this.fireMode = 'semi';
-
-        // 3 mod slots for shotgun + rail
-        this.modSlots = ['receiver', 'barrel', 'magazine', 'sight', 'muzzle', 'choke', 'pump', 'ammo', 'rail'];
-        this.attachments = new Array(this.modSlots.length).fill(null);
-
-        this.baseKnockback = 8; // High knockback for shotgun
-    }
-
-    update(input, isMouseOverUI, mouseWorldPos) {
-        const now = Date.now();
-        // Update pump animation progress
-        if (this.pumpProgress > 0) {
-            const timeSincePump = now - this.lastPumpTime;
-            this.pumpProgress = Math.max(0, 1 - (timeSincePump / this.pumpDuration));
-        }
-        super.update(input, isMouseOverUI, mouseWorldPos);
-    }
-
-    canShoot(now) {
-        if (!super.canShoot(now)) return false;
-        return this.pumpProgress <= 0;
-    }
-
-    finishReload() {
-        const stats = this.getModifiedStats();
-        const effectiveMagSize = Math.ceil(this.magSize * stats.magSize);
-        const ammoNeeded = effectiveMagSize - this.ammo;
-        const ammoToTransfer = Math.min(ammoNeeded, this.reserveAmmo);
-        
-        this.ammo += ammoToTransfer;
-        this.reserveAmmo -= ammoToTransfer;
-        
-        this.isReloading = false;
-        this.reloadAnimProgress = 0;
-    }
-
-    fireOneShot(now = Date.now()) {
-        if (this.ammo <= 0) {
-            return;
-        }
-        this.ammo--;
-
-        // Start the pump animation
-        this.lastPumpTime = now;
-        this.pumpProgress = 1;
-
-        if (this.owner === world.player) {
-            world.playerHasBeenAggressive = true;
-        
-            // Increase wanted level slightly for each shot fired by the player
-            if (now - world.lastWantedLevelIncrease > 1000) { // Don't spam increases
-                world.wantedLevel = Math.min(5, world.wantedLevel + 0.1);
-                world.lastWantedLevelIncrease = now;
-            }
-        }
-        
-        const angle = this.owner.angle;
-        const stats = this.getModifiedStats();
-        
-        // Update recoil
-        this.recoil = stats.recoilAmount;
-        playSound('shotgun_shoot', { 
-            volume: this.soundVolume, 
-            pitch: this.soundPitchBase + (Math.random() * this.soundPitchVariance * 2) - this.soundPitchVariance
-        });
-
-        // --- SHELL EJECTION ---
-        const portLocalX = this.owner.radius + this.ejectionPortOffset.x;
-        const portLocalY = this.ejectionPortOffset.y;
-        const cosA = Math.cos(angle);
-        const sinA = Math.sin(angle);
-        const rotatedPortX = portLocalX * cosA - portLocalY * sinA;
-        const rotatedPortY = portLocalX * sinA + portLocalY * cosA;
-        const worldEjectX = this.owner.x + rotatedPortX;
-        const worldEjectY = this.owner.y + rotatedPortY;
-        shells.push(new Shell(worldEjectX, worldEjectY, angle, { ...this.shellSize, type: 'shotgun' }));
-
-        // --- PROJECTILE FIRING ---
-        const muzzleDist = this.owner.radius + this.width - this.recoil;
-        const basePelletCount = this.pelletCount;
-        const totalPellets = Math.max(1, Math.floor(basePelletCount * stats.projectileCount));
-
-        // Generate unique shot ID for damage tracking
-        const shotId = Date.now() + Math.random();
-
-        for (let i = 0; i < totalPellets; i++) {
-            // Apply both natural shotgun spread and accuracy modifier
-            const baseSpread = this.spreadAngle;
-            const accuracySpread = (1 - Math.min(1, stats.accuracy)) * (Math.PI / 8);
-            const totalSpread = baseSpread + accuracySpread;
-            const projectileAngle = this.owner.angle + (Math.random() - 0.5) * totalSpread;
-
-            const projX = this.owner.x + Math.cos(projectileAngle) * muzzleDist;
-            const projY = this.owner.y + Math.sin(projectileAngle) * muzzleDist;
-
-            projectiles.push(new Projectile(projX, projY, projectileAngle, {
-                radius: stats.projectileRadius,
-                mass: stats.projectileMass,
-                damage: stats.damage,
-                speed: stats.projectileSpeed,
-                isHeadshot: Math.random() < stats.headshotChance,
-                weaponName: this.name,
-                shotId: shotId,
-                owner: this.owner,
-                piercing: stats.piercing,
-                tracking: stats.tracking,
-                trackingStrength: stats.trackingStrength,
-                bloodyMess: stats.bloodyMess,
-                dismemberChance: stats.dismemberChance,
-                // New projectile behavior options
-                bulletSize: stats.bulletSize,
-                pathType: stats.pathType,
-                pathAmplitude: stats.pathAmplitude,
-                pathFrequency: stats.pathFrequency,
-                spiralRadius: stats.spiralRadius,
-                maxSpeed: stats.maxSpeed,
-                minSpeed: stats.minSpeed,
-            }));
-        }
-    }
-
-    draw(ctx) {
-        if (!this.owner) return; // Guard against null owner
-        
-        const gunX = this.owner.radius - this.recoil;
-        const gunY = -this.height / 2; // -7
-
-        const stockColor = this.color; // wood
-        const receiverColor = '#2c3e50'; // dark metal grey
-        const barrelColor = '#444'; // slightly lighter metal grey
-        const pumpColor = '#6d4c41'; // darker wood for pump
-
-        // Define part dimensions
-        const stockWidth = 15;
-        const stockHeight = this.height; // 14
-        
-        const receiverWidth = 15;
-        const receiverHeight = 12;
-
-        const barrelWidth = 25;
-        const barrelHeight = 6;
-        
-        const pumpWidth = 15;
-        const pumpHeight = 8;
-        
-        // Stock
-        ctx.fillStyle = stockColor;
-        ctx.fillRect(gunX, gunY, stockWidth, stockHeight);
-
-        // Receiver
-        ctx.fillStyle = receiverColor;
-        ctx.fillRect(gunX + stockWidth, gunY + (this.height - receiverHeight) / 2, receiverWidth, receiverHeight);
-        
-        // Barrel
-        const barrelX = gunX + stockWidth + receiverWidth;
-        const barrelY = gunY + (this.height - barrelHeight) / 2;
-        ctx.fillStyle = barrelColor;
-        ctx.fillRect(barrelX, barrelY, barrelWidth, barrelHeight);
-
-        // Animate the pump based on pumpProgress
-        const pumpAnimProgress = 1 - this.pumpProgress; // Invert so it goes 0 -> 1 -> 0
-        const pumpAnimPath = 1 - Math.abs(1 - pumpAnimProgress * 2);
-        const pumpTravelDist = 18;
-        
-        // Pump (under barrel, slightly thicker)
-        const pumpX = barrelX + 5 - (pumpAnimPath * pumpTravelDist);
-        const pumpY = gunY + (this.height - pumpHeight) / 2;
-        ctx.fillStyle = pumpColor;
-        ctx.fillRect(pumpX, pumpY, pumpWidth, pumpHeight);
     }
 }
 

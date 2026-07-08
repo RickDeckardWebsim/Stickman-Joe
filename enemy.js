@@ -338,6 +338,20 @@ export default class Enemy {
         
         if (!wasAlive) return; // Don't run AI if dead.
 
+        // --- Frost cleanup: restore speed when freeze expires ---
+        if (this._frozenUntil && now > this._frozenUntil) {
+            this.speed = this._frozenSpeed || 2;
+            this._frozenUntil = 0;
+        }
+
+        // --- Confusion cleanup: restore normal AI when confusion expires ---
+        if (this._confusedUntil && now > this._confusedUntil) {
+            this._confusedUntil = 0;
+            this.civilianTarget = null;
+            this.policeTarget = null;
+            this.state = 'PATROLLING';
+        }
+
         // Check for Grieving state first
         if (this.state === 'GRIEVING') {
             const grievingMovement = runGrievingBehavior(this, now);
