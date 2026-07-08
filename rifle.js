@@ -83,10 +83,13 @@ export class Rifle extends Weapon {
         ctx.fillStyle = barrelColor;
         ctx.fillRect(gunX + stockWidth + bodyWidth, gunY + (this.height - barrelHeight) / 2, barrelWidth, barrelHeight);
         
-        // Magazine
-        const magWidth = 6;
-        const magHeight = 12;
-        ctx.fillStyle = magazineColor;
-        ctx.fillRect(gunX + stockWidth + 8, gunY + bodyHeight - 2, magWidth, magHeight);
+        // Magazine — slides out during reload
+        const magState = this._getMagDrawState();
+        if (magState.visible) {
+            const magWidth = 6;
+            const magHeight = 12;
+            ctx.fillStyle = magazineColor;
+            ctx.fillRect(gunX + stockWidth + 8, gunY + bodyHeight - 2 + magState.offsetY, magWidth, magHeight);
+        }
     }
 }

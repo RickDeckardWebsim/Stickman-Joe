@@ -443,6 +443,24 @@ export class Weapon {
         this.baseKnockback = 3; // Base knockback force
     }
 
+    // Returns { offsetY, visible } for magazine rendering during reload.
+    // Phase 1 (progress 0→0.5): mag slides down and disappears (old mag falling out).
+    // Phase 2 (progress 0.5→1): mag hidden (hand inserting new mag).
+    // Not reloading: mag visible at normal position.
+    _getMagDrawState() {
+        if (!this.isReloading || this.reloadAnimProgress <= 0) {
+            return { offsetY: 0, visible: true };
+        }
+        const progress = this.reloadAnimProgress;
+        if (progress < 0.5) {
+            // Slide down during first half — mag dropping out
+            const dropT = progress * 2; // 0→1
+            return { offsetY: dropT * 15, visible: true };
+        }
+        // Second half — mag is out, hand is inserting new one
+        return { offsetY: 0, visible: false };
+    }
+
     attachMod(attachment, slotIndex) {
         if (slotIndex >= this.modSlots.length || slotIndex < 0) return false;
 
@@ -714,12 +732,13 @@ export class Weapon {
             this.reloadAnimProgress = 0;
             playSound('reload', { volume: 0.3, pitch: this.soundPitchBase });
 
-            // Drop magazine only if it's empty upon reload. Mags with ammo are kept.
-            if (this.magazineOptions && this.ammo === 0) {
+            // Drop magazine from the magwell position (bottom of gun)
+            if (this.magazineOptions) {
                 const angle = this.owner.angle;
-                // Eject from roughly where shells are ejected, but with less force
-                const portLocalX = this.owner.radius + this.ejectionPortOffset.x - 10; // slightly behind port
-                const portLocalY = this.ejectionPortOffset.y + 5; // slightly below port
+                // Eject from the magwell point if available, otherwise approximate from ejection port
+                const magWell = this.magWellPoint || { x: this.owner.radius + 10, y: 8 };
+                const portLocalX = this.owner.radius + magWell.x;
+                const portLocalY = magWell.y + 5; // slightly below magwell
 
                 const cosA = Math.cos(angle);
                 const sinA = Math.sin(angle);
@@ -932,12 +951,14 @@ export class Rifle extends Weapon {
         const barrelHeight = 4;
         ctx.fillStyle = barrelColor;
         ctx.fillRect(gunX + stockWidth + bodyWidth, gunY + (this.height - barrelHeight) / 2, barrelWidth, barrelHeight);
-        
-        // Magazine
-        const magWidth = 6;
-        const magHeight = 12;
-        ctx.fillStyle = magazineColor;
-        ctx.fillRect(gunX + stockWidth + 8, gunY + bodyHeight - 2, magWidth, magHeight);
+        // Magazine — slides out during reload
+        const magState = this._getMagDrawState();
+        if (magState.visible) {
+            const magWidth = 6;
+            const magHeight = 12;
+            ctx.fillStyle = magazineColor;
+            ctx.fillRect(gunX + stockWidth + 8, gunY + bodyHeight - 2 + magState.offsetY, magWidth, magHeight);
+        }
     }
 }
 

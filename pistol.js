@@ -57,11 +57,14 @@ export class Pistol extends Weapon {
         const slideColor = '#4a4a4a';
         const gripColor = this.color;
 
-        // Grip
+        // Grip (doubles as magazine) — slides out during reload
         const gripWidth = 10;
         const gripHeight = this.height;
-        ctx.fillStyle = gripColor;
-        ctx.fillRect(gunX, gunY, gripWidth, gripHeight);
+        const magState = this._getMagDrawState();
+        if (magState.visible) {
+            ctx.fillStyle = gripColor;
+            ctx.fillRect(gunX, gunY + magState.offsetY, gripWidth, gripHeight);
+        }
         
         // Slide
         const slideWidth = 20; // smaller than total width

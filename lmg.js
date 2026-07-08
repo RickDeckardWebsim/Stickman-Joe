@@ -80,11 +80,14 @@ export class LMG extends Weapon {
         ctx.fillStyle = barrelColor;
         ctx.fillRect(gunX + stockWidth + bodyWidth, gunY + (this.height - barrelHeight) / 2, barrelWidth, barrelHeight);
         
-        // Green Box Magazine
-        const magWidth = 20;
-        const magHeight = 25;
-        ctx.fillStyle = magazineColor;
-        ctx.fillRect(gunX + stockWidth + 5, gunY + bodyHeight - 5, magWidth, magHeight);
+        // Green Box Magazine — slides out during reload
+        const magState = this._getMagDrawState();
+        if (magState.visible) {
+            const magWidth = 20;
+            const magHeight = 25;
+            ctx.fillStyle = magazineColor;
+            ctx.fillRect(gunX + stockWidth + 5, gunY + bodyHeight - 5 + magState.offsetY, magWidth, magHeight);
+        }
         
         // Bipod (folded)
         ctx.fillStyle = '#222';
