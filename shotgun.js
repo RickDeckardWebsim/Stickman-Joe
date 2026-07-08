@@ -111,6 +111,11 @@ export class Shotgun extends Weapon {
             volume: this.soundVolume, 
             pitch: this.soundPitchBase + (Math.random() * this.soundPitchVariance * 2) - this.soundPitchVariance
         });
+
+        // --- Alert nearby NPCs to the gunshot (hearing system) ---
+        if (this.owner === world.player) {
+            import('./ai/witness.js').then(m => m.alertGunshot(this.owner.x, this.owner.y));
+        }
         // Play pump sound shortly after the shot
         setTimeout(() => playSound('shotgun_pump', {volume: 0.4, pitch: 1.1 + (Math.random() - 0.5) * 0.2}), 200);
 

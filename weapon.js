@@ -986,6 +986,11 @@ export class Weapon {
             pitch: this.soundPitchBase + (Math.random() * this.soundPitchVariance * 2) - this.soundPitchVariance
         });
 
+        // --- Alert nearby NPCs to the gunshot (hearing system) ---
+        if (this.owner === world.player) {
+            import('./ai/witness.js').then(m => m.alertGunshot(this.owner.x, this.owner.y));
+        }
+
         // --- SHELL EJECTION ---
         const portLocalX = this.owner.radius + this.ejectionPortOffset.x;
         const portLocalY = this.ejectionPortOffset.y;

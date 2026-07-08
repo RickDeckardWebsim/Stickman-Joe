@@ -6,7 +6,7 @@ import { initUI, updateUI, isMouseOverUI, toggleInventoryAndBodyStatus, isDraggi
 import { createImpactParticles, createBuildingImpactParticles } from './impact.js';
 import { createBloodSplatter, createHeadChunkParticle, NeckBloodEmitter, BloodParticle, BloodPool, checkAndLeaveBloodFootprint, updateCorpseBleeding } from './gore.js';
 import Ragdoll from './ragdoll.js';
-import { notifyNearbyEnemiesOfDeath, checkCrimeWitnesses } from './ai/witness.js';
+import { notifyNearbyEnemiesOfDeath, checkCrimeWitnesses, alertGunshot, updateAlerts } from './ai/witness.js';
 import ItemPickup, { AmmoPickup, ThrowablePickup } from './pickup.js';
 import { MoneyPickup, CanPickup, MoneyWallet, EmptyCan } from './currency.js';
 import { Grenade, ProceduralThrowable } from './weapon.js';
@@ -820,6 +820,7 @@ function gameLoop() {
         manageCanSpawning();
         manageDeadDropSpawning();
         updateWantedLevel();
+        updateAlerts();
         manageCivilianConflict(Date.now());
         checkRivalSpawnConditions(player);
     }
