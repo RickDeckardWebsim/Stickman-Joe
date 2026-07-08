@@ -413,6 +413,33 @@ export default class Player {
         this.x += dx;
         this.y += dy;
 
+        // --- Zombie Grab Break-Free ---
+        // Count how many zombies are grabbing the player
+        let grabbingZombies = 0;
+        for (const e of enemies) {
+            if (e && e.isZombie && e.grabbingTarget === this && e.health > 0) {
+                grabbingZombies++;
+            }
+        }
+        if (grabbingZombies > 0 && magnitude > 0) {
+            // Player is trying to move while grabbed — break chance based on hoard size
+            // Sprinting doubles break chance, normal movement has lower chance
+            const breakChance = isSprinting ? 0.08 / grabbingZombies : 0.04 / grabbingZombies;
+            if (Math.random() < breakChance) {
+                // Break free from ALL grabbing zombies
+                for (const e of enemies) {
+                    if (e && e.isZombie && e.grabbingTarget === this) {
+                        e.grabbingTarget = null;
+                    }
+                }
+            } else {
+                // Failed to break free — reduce movement speed (hoard drags player back)
+                const slowFactor = 1 / (1 + grabbingZombies * 0.5);
+                this.x -= dx * (1 - slowFactor);
+                this.y -= dy * (1 - slowFactor);
+            }
+        }
+
         this.constrainToWorld();
         if (world.city) {
             this.constrainToCity(world.city);

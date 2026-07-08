@@ -162,6 +162,18 @@ export default class Enemy {
         
         // Knockback resistance (varies by enemy type)
         this.knockbackResistance = Math.random() * 0.3; // 0-30% resistance
+
+        // --- Zombie Grab System ---
+        this.grabbingTarget = null;      // Living target currently being grabbed
+        this.grabDamageInterval = 800;   // ms between grab damage ticks
+        this.lastGrabDamageTime = 0;     // Last time grab damage was applied
+        this.grabStrength = 1;           // How hard this zombie holds on
+
+        // --- Zombie Corpse Eating ---
+        this.eatingCorpse = null;        // Corpse currently being eaten
+        this.eatProgress = 0;            // 0-1, how much of the corpse has been eaten
+        this.eatDamageInterval = 500;    // ms between eat ticks
+        this.lastEatTime = 0;
     }
 
     attemptPickpocket(player) {
@@ -749,13 +761,14 @@ export default class Enemy {
             }
         }
 
-        // Handle biting when close to player and no weapon
-        if (this.isZombie && this.civilianTarget) {
-            const distToTarget = Math.hypot(this.x - this.civilianTarget.x, this.y - this.civilianTarget.y);
-            if (distToTarget < this.biteAttack.range) {
-                this.bite();
-            }
+        // --- Zombie Grab & Hoard System (runs BEFORE bite so grab starts first) ---
+        if (this.isZombie) {
+            this._updateZombieGrab(player, now);
+            this._updateZombieEating(now);
         }
+
+        // Zombies no longer bite — the grab system replaces the bite mechanic.
+        // The grab does progressive damage, hoarding, and zombify-on-death.
     }
 
     spreadPanic() {
@@ -1151,9 +1164,207 @@ export default class Enemy {
         this.civilianTarget = null;
         this.policeTarget = null;
         this.fleeTarget = null;
-        
+        this.lastBiteTime = Date.now(); // Prevent immediate bite — let grab start first
         // Play a sound effect?
         // playSound('zombie_turn');
+    }
+
+    // --- Zombie Grab: lock onto living target, deal progressive damage, hoard mechanic ---
+    _updateZombieGrab(player, now) {
+        // If already grabbing, maintain the grab
+        if (this.grabbingTarget) {
+            const target = this.grabbingTarget;
+
+            // Release if target died, escaped, or zombie died
+            if (target.health <= 0 || this.health <= 0) {
+                this.grabbingTarget = null;
+                return;
+            }
+
+            const dist = Math.hypot(target.x - this.x, target.y - this.y);
+
+            // Release if target escaped (moved too far away)
+            if (dist > 70) {
+                this.grabbingTarget = null;
+                return;
+            }
+
+            // Pull target toward the zombie (hoard: multiple zombies each pull)
+            // The more zombies grabbing, the harder it is to escape
+            const pullForce = this.grabStrength * 0.3;
+            const angle = Math.atan2(this.y - target.y, this.x - target.x);
+            target.x += Math.cos(angle) * pullForce;
+            target.y += Math.sin(angle) * pullForce;
+
+            // Count how many zombies are grabbing this target (hoard weight)
+            let hoardSize = 1;
+            for (const e of enemies) {
+                if (e !== this && e.isZombie && e.grabbingTarget === target && e.health > 0) {
+                    hoardSize++;
+                }
+            }
+
+            // Progressive damage — more zombies = faster damage
+            if (now - this.lastGrabDamageTime > this.grabDamageInterval) {
+                this.lastGrabDamageTime = now;
+                const grabDamage = 5 * hoardSize; // 5 dmg per zombie per tick
+                const dmgAngle = Math.atan2(target.y - this.y, target.x - this.x);
+                target.takeDamage(grabDamage, dmgAngle, {
+                    weaponName: 'Zombie Grab',
+                    owner: this,
+                    knockback: 0, // No knockback — they're being held
+                });
+
+                // Zombify on death from grabbing
+                if (target.health <= 0 && target.zombify) {
+                    target.zombify();
+                }
+            }
+
+            // Target can try to break free — harder with more zombies
+            // Player breaks free by moving (handled in player update via movement force)
+            // NPCs break free based on bravery vs hoard size
+            if (target !== player && target.health > 0) {
+                const breakChance = (target.bravery || 0.1) / (hoardSize * 0.5);
+                if (Math.random() < breakChance * 0.01) {
+                    this.grabbingTarget = null;
+                }
+            }
+
+            return;
+        }
+
+        // Try to grab a new target — only if close enough and target is alive
+        if (this.civilianTarget && this.civilianTarget.health > 0) {
+            const dist = Math.hypot(this.civilianTarget.x - this.x, this.civilianTarget.y - this.y);
+            if (dist < this.biteAttack.range + 10) {
+                // Start grabbing!
+                this.grabbingTarget = this.civilianTarget;
+                this.lastGrabDamageTime = now;
+            }
+        }
+
+        // Also try to grab the player
+        if (!this.grabbingTarget && player && !player.isDead) {
+            const dist = Math.hypot(player.x - this.x, player.y - this.y);
+            if (dist < this.biteAttack.range + 10) {
+                this.grabbingTarget = player;
+                this.lastGrabDamageTime = now;
+            }
+        }
+    }
+
+    // --- Zombie Corpse Eating: drag corpse close, eat it part by part ---
+    _updateZombieEating(now) {
+        // If already eating, continue
+        if (this.eatingCorpse) {
+            const corpse = this.eatingCorpse;
+
+            // Check if corpse still exists
+            const allCorpses = [...corpses, ...settledCorpses];
+            if (!allCorpses.includes(corpse)) {
+                this.eatingCorpse = null;
+                this.eatProgress = 0;
+                return;
+            }
+
+            // Get corpse center position
+            let cx, cy;
+            if (corpse.points && corpse.points.length > 0) {
+                cx = corpse.points.reduce((sum, p) => sum + p.x, 0) / corpse.points.length;
+                cy = corpse.points.reduce((sum, p) => sum + p.y, 0) / corpse.points.length;
+            } else {
+                cx = corpse.x || this.x;
+                cy = corpse.y || this.y;
+            }
+
+            const dist = Math.hypot(cx - this.x, cy - this.y);
+
+            // If too far, drag the corpse toward the zombie
+            if (dist > 30) {
+                const angle = Math.atan2(this.y - cy, this.x - cx);
+                const dragForce = 0.5;
+                // Move all corpse points toward the zombie
+                if (corpse.points) {
+                    for (const p of corpse.points) {
+                        p.x += Math.cos(angle) * dragForce;
+                        p.y += Math.sin(angle) * dragForce;
+                    }
+                }
+                // Walk toward the corpse
+                this.facingAngle = Math.atan2(cy - this.y, cx - this.x);
+                return;
+            }
+
+            // Close enough — eat the corpse
+            this.facingAngle = Math.atan2(cy - this.y, cx - this.x);
+
+            if (now - this.lastEatTime > this.eatDamageInterval) {
+                this.lastEatTime = now;
+                this.eatProgress += 0.1; // 10% per eat tick
+
+                // Remove body parts progressively
+                if (corpse.points && corpse.points.length > 2) {
+                    // Remove a random non-essential point (keep head and neck for visual)
+                    const removable = corpse.points.filter(p => p !== corpse.headPoint && p !== corpse.neckPoint);
+                    if (removable.length > 0) {
+                        const victim = removable[Math.floor(Math.random() * removable.length)];
+                        // Remove the point and any sticks connected to it
+                        corpse.points = corpse.points.filter(p => p !== victim);
+                        corpse.sticks = corpse.sticks.filter(s => s.p0 !== victim && s.p1 !== victim);
+                    }
+                }
+
+                // Spawn blood particles from eating
+                for (let i = 0; i < 3; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 2 + 1;
+                    particles.push(new BloodParticle(cx, cy, Math.cos(angle) * speed, Math.sin(angle) * speed, Math.random() * 2 + 1));
+                }
+
+                // Heal the zombie slightly from eating
+                this.health = Math.min(this.maxHealth, this.health + 3);
+
+                // When fully eaten, remove the corpse
+                if (this.eatProgress >= 1) {
+                    // Remove from whichever array it's in
+                    const cIdx = corpses.indexOf(corpse);
+                    if (cIdx >= 0) corpses.splice(cIdx, 1);
+                    const sIdx = settledCorpses.indexOf(corpse);
+                    if (sIdx >= 0) settledCorpses.splice(sIdx, 1);
+
+                    this.eatingCorpse = null;
+                    this.eatProgress = 0;
+                }
+            }
+            return;
+        }
+
+        // Look for a nearby corpse to eat (only if no living target nearby)
+        const hasLivingTarget = this.civilianTarget && this.civilianTarget.health > 0 &&
+            Math.hypot(this.civilianTarget.x - this.x, this.civilianTarget.y - this.y) < 200;
+
+        if (!hasLivingTarget) {
+            const allCorpses = [...corpses, ...settledCorpses];
+            for (const corpse of allCorpses) {
+                if (!corpse || corpse._beingEaten) continue;
+                let cx, cy;
+                if (corpse.points && corpse.points.length > 0) {
+                    cx = corpse.points.reduce((sum, p) => sum + p.x, 0) / corpse.points.length;
+                    cy = corpse.points.reduce((sum, p) => sum + p.y, 0) / corpse.points.length;
+                } else {
+                    continue;
+                }
+                const dist = Math.hypot(cx - this.x, cy - this.y);
+                if (dist < 150) {
+                    this.eatingCorpse = corpse;
+                    corpse._beingEaten = true;
+                    this.eatProgress = 0;
+                    this.lastEatTime = now;
+                    break;
+                }
+            }
+        }
     }
 
     getBodyColor() {
