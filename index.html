@@ -191,7 +191,7 @@
         </div>
     </div>
     <div id="ui-container"></div>
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" onerror="console.warn('PeerJS failed to load — multiplayer disabled')" async></script>
     <script type="module" src="./options.js"></script>
     <script type="module" src="./main.js"></script>
 </body>
