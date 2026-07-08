@@ -534,25 +534,15 @@ export default class Enemy {
         const finalDistToPlayer = Math.hypot(this.x - player.x, this.y - player.y);
         const minPlayerDist = this.radius + player.radius;
 
-        if (finalDistToPlayer < minPlayerDist) {
+        if (finalDistToPlayer < minPlayerDist && finalDistToPlayer > 0) {
             const overlap = minPlayerDist - finalDistToPlayer;
             const angle = Math.atan2(this.y - player.y, this.x - player.x);
 
-            const pushAmount = overlap * 0.5; // Each gets pushed by half the overlap
-
-            // Push enemy away from player
-            this.x -= Math.cos(angle) * pushAmount;
-            this.y -= Math.sin(angle) * pushAmount;
-
-            // Push player away from enemy
-            player.x += Math.cos(angle) * pushAmount;
-            player.y += Math.sin(angle) * pushAmount;
-
-            // Immediately constrain player to world bounds after being pushed
-            player.constrainToWorld();
-            if (world.city) {
-                player.constrainToCity(world.city);
-            }
+            // Only push the ENEMY away — player push is handled
+            // centrally in resolvePlayerCollisions() in main.js
+            // to prevent multi-enemy feedback loops that cause spazzing.
+            this.x += Math.cos(angle) * overlap * 0.5;
+            this.y += Math.sin(angle) * overlap * 0.5;
         }
 
         // --- Enhanced Facing Direction with Smoother Turning ---

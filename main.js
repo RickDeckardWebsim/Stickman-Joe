@@ -1162,6 +1162,49 @@ function gameLoop() {
         }
     }
 
+    // --- Consolidated player-enemy collision resolution ---
+    // Runs ONCE after all enemies have updated, preventing the multi-enemy
+    // feedback loop that caused the player to spaz/jitter when touching NPCs.
+    // Each enemy pushes the player by half the overlap (the other half is the
+    // enemy pushing itself away in its own update). Pushes are SUMMED (not
+    // averaged) so that opposing pushes don't cancel and trap the player inside
+    // a crowd — the closer enemy (larger overlap) dominates. The total is capped
+    // to player.radius so dense crowds don't launch the player.
+    if (player) {
+        let totalPushX = 0;
+        let totalPushY = 0;
+
+        for (const enemy of enemies) {
+            if (!enemy || enemy.health <= 0) continue;
+            const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+            const minDist = player.radius + enemy.radius;
+
+            if (dist < minDist && dist > 0) {
+                const overlap = minDist - dist;
+                const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+                // Sum pushes — each enemy contributes half the overlap
+                totalPushX += Math.cos(angle) * overlap * 0.5;
+                totalPushY += Math.sin(angle) * overlap * 0.5;
+            }
+        }
+
+        const pushMag = Math.hypot(totalPushX, totalPushY);
+        if (pushMag > 0) {
+            // Cap total push to player.radius so crowds don't launch the player
+            const cap = player.radius;
+            if (pushMag > cap) {
+                totalPushX = (totalPushX / pushMag) * cap;
+                totalPushY = (totalPushY / pushMag) * cap;
+            }
+            player.x += totalPushX;
+            player.y += totalPushY;
+            player.constrainToWorld();
+            if (world.city) {
+                player.constrainToCity(world.city);
+            }
+        }
+    }
+
     // Update projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
