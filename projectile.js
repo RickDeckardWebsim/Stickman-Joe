@@ -117,32 +117,35 @@ export default class Projectile {
 
     update() {
         if (this.stuckTo) {
-            if (this.stuckTo.health <= 0 || (this.onHitEffect === 'zombify' && this.stuckTo.isZombie)) {
-                // If the target dies, or if it has been successfully zombified,
-                // the projectile should detach.
+            if (this.stuckTo.health <= 0) {
+                // Target died — detach the projectile
                 this.stuckTo = null;
-                
-                // If it's a zombifying projectile, it should just disappear.
+
                 if (this.onHitEffect === 'zombify') {
                     this.vx = 0;
                     this.vy = 0;
-                    // Returning true will signal for its removal from the projectiles array in the main loop
-                    return true;
+                    return true; // Remove zombify needle
                 }
 
                 // For other projectiles, give a little velocity so it falls to the ground
                 this.vx = (Math.random() - 0.5) * 2;
                 this.vy = (Math.random() - 0.5) * 2;
             } else {
-                // Check for timed effects even while stuck
-                this.handleTimerEffects(Date.now());
-                if (this.onHitEffect === 'zombify') {
-                    return; // No other updates for zombify projectiles
-                }
-
-                // Update position to stay stuck to the target
+                // Target still alive — follow them
                 this.x = this.stuckTo.x + this.stuckOffset.x;
                 this.y = this.stuckTo.y + this.stuckOffset.y;
+
+                // Check for timed effects even while stuck
+                this.handleTimerEffects(Date.now());
+
+                // Detach when the infection completes and the NPC turns
+                if (this.onHitEffect === 'zombify' && this.stuckTo.isZombie) {
+                    this.stuckTo = null;
+                    this.vx = 0;
+                    this.vy = 0;
+                    return true; // Remove the needle — its job is done
+                }
+
                 return; // Don't do other updates
             }
         }
