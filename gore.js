@@ -138,6 +138,57 @@ export function updateCorpseBleeding(corpse, now) {
     }
 }
 
+// --- Puke Particle ---
+// Greenish-yellow chunky particle that spawns from NPC mouths during high stress
+export class PukeParticle extends Particle {
+    constructor(x, y, vx, vy, size) {
+        super(x, y, vx, vy);
+        this.size = size;
+        this.friction = 0.92;
+        this.life = 30 + Math.random() * 20;
+        this.maxLife = this.life;
+        this.color = `rgba(${100 + Math.random() * 40}, ${120 + Math.random() * 40}, ${20 + Math.random() * 20}, 0.85)`;
+        this.settled = false;
+        this.settleThreshold = 0.3;
+    }
+
+    update(deltaTime = 16) {
+        if (!this.active) return false;
+
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= this.friction;
+        this.vy *= this.friction;
+
+        this.life -= deltaTime / 16;
+
+        const speed = Math.hypot(this.vx, this.vy);
+        if (speed < this.settleThreshold && !this.settled) {
+            this.settled = true;
+            // Stamp to decal canvas as a puke stain
+            import('./main.js').then(() => {
+                if (window.bloodDecalManager) {
+                    window.bloodDecalManager.stampDot(this.x, this.y, this.size, this.color);
+                }
+            });
+        }
+
+        if (this.life <= 0) {
+            this.active = false;
+            return true;
+        }
+        return false;
+    }
+
+    draw(ctx) {
+        if (this.settled) return; // Already stamped to decal
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
 import { Particle } from './particle.js';
 import { particles, world } from './world.js';
 import { RagdollPoint, RagdollStick } from './ragdoll.js';

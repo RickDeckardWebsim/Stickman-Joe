@@ -1,5 +1,5 @@
 import { world, enemies, particles, corpses, settledCorpses } from './world.js';
-import { createBloodSplatter, BloodParticle, PointBloodEmitter } from './gore.js';
+import { createBloodSplatter, BloodParticle, PointBloodEmitter, PukeParticle } from './gore.js';
 import { TearParticle } from './visual-effects.js';
 import { getSidewalkPatrolPoint, hasLineOfSight, getSidewalkPath, findNearestSidewalk, isOnSidewalk } from './city.js';
 import Ragdoll from './ragdoll.js';
@@ -174,6 +174,14 @@ export default class Enemy {
         this.eatProgress = 0;            // 0-1, how much of the corpse has been eaten
         this.eatDamageInterval = 500;    // ms between eat ticks
         this.lastEatTime = 0;
+
+        // --- Puke/Stress System ---
+        this.stressLevel = 0;            // 0-100, accumulates from pain, fear, gore
+        this.isPuking = false;
+        this.pukeEndTime = 0;
+        this.lastPukeTime = 0;
+        this.stressDecayRate = 0.5;
+        this.pukeCooldown = 8000;
     }
 
     attemptPickpocket(player) {
@@ -420,6 +428,24 @@ export default class Enemy {
                 this.lastTearTime = now;
             }
             return; // Skip AI and movement logic
+        }
+
+        // --- Stress & Puke System ---
+        if (!this.isZombie) {
+            // Accumulate stress from various sources
+            if (this.health < this.maxHealth * 0.5) {
+                this.stressLevel += (this.maxHealth * 0.5 - this.health) * 0.02;
+            }
+            if (this.state === 'FLEEING') this.stressLevel += 0.3;
+            if (this.state === 'GRIEVING') this.stressLevel += 0.5;
+            if (this.isBleeding) this.stressLevel += 0.2;
+
+            // Decay stress over time
+            this.stressLevel = Math.max(0, this.stressLevel - this.stressDecayRate);
+            this.stressLevel = Math.min(100, this.stressLevel);
+
+            // Trigger puking when stress is high enough
+            this._tryPuke(now);
         }
 
         const buildings = world.city ? world.city.buildings : [];
@@ -807,6 +833,41 @@ export default class Enemy {
             
             // Tears come from the 'eyes', which are near the top of the circle
             particles.push(new TearParticle(this.x, this.y - this.radius * 0.3, vx, vy, size));
+        }
+    }
+
+    _tryPuke(now) {
+        // If already puking, continue the puke animation
+        if (this.isPuking) {
+            if (now > this.pukeEndTime) {
+                this.isPuking = false;
+            } else {
+                // Emit puke particles from the mouth (front of the NPC)
+                const mouthX = this.x + Math.cos(this.facingAngle) * this.radius;
+                const mouthY = this.y + Math.sin(this.facingAngle) * this.radius;
+                const pukeAngle = this.facingAngle + (Math.random() - 0.5) * 0.5;
+                const speed = 1 + Math.random() * 2;
+
+                particles.push(new PukeParticle(
+                    mouthX, mouthY,
+                    Math.cos(pukeAngle) * speed,
+                    Math.sin(pukeAngle) * speed,
+                    2 + Math.random() * 3
+                ));
+            }
+            return;
+        }
+
+        // Try to start puking — stress must be high enough and cooldown elapsed
+        if (this.stressLevel > 60 && now - this.lastPukeTime > this.pukeCooldown) {
+            // Lower stamina = more likely to puke
+            const pukeChance = (this.stressLevel - 60) / 40; // 0-1 scale from 60-100 stress
+            if (Math.random() < pukeChance * 0.02) {
+                this.isPuking = true;
+                this.pukeEndTime = now + 1500 + Math.random() * 1000; // 1.5-2.5s of puking
+                this.lastPukeTime = now;
+                this.stressLevel *= 0.5; // Puking relieves some stress
+            }
         }
     }
 
@@ -1573,6 +1634,17 @@ export default class Enemy {
             ctx.beginPath();
             ctx.arc(0, 0, this.radius + 5, 0, Math.PI * 2);
             ctx.fillStyle = flashColor;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Puking indicator — greenish aura
+        if (this.isPuking) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.fillStyle = 'rgba(100, 150, 30, 0.3)';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius + 8, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
