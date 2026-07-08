@@ -28,6 +28,7 @@ import { InjectionCannon } from './injection-cannon.js';
 import { LMG } from './lmg.js';
 import Rival from './rival.js';
 import Summit, { incrementSummitKillCount } from './summit.js';
+import { RatManager } from './rat.js';
 import { ThrowableEntity } from './throwable.js';
 import { initStartMenu } from './start-menu.js';
 import { settings, initOptionsMenu } from './options.js';
@@ -176,6 +177,7 @@ class BloodDecalManager {
 
 // Global blood decal manager
 let bloodDecalManager;
+let ratManager = new RatManager();
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -936,6 +938,9 @@ function gameLoop() {
         }
     }
 
+    // --- Rats: scurry around the city and nibble corpses ---
+    ratManager.update(player, world.city, Date.now());
+
     // --- Corpse bleeding: settled corpses leak blood into pools ---
     const bleedNow = Date.now();
     for (const corpse of settledCorpses) {
@@ -1628,6 +1633,9 @@ function gameLoop() {
     for (const enemy of enemies) {
         enemy.draw(ctx, player);
     }
+
+    // Draw rats
+    ratManager.draw(ctx);
 
     player.draw(ctx);
     // --- Shadow player rendering (host mode only) ---
