@@ -739,4 +739,43 @@ export default class Player {
 
         ctx.restore();
     }
+
+    respawn() {
+        // Reset position to a safe spot near world center
+        this.x = world.width / 2 + (Math.random() - 0.5) * 200;
+        this.y = world.height / 2 + (Math.random() - 0.5) * 200;
+
+        // Reset health and death state
+        this.health = this.maxHealth;
+        this.isDead = false;
+        this.deathType = null;
+        this.deathTime = 0;
+        this.isBleeding = false;
+        this.bleedDps = 0;
+        this.armor = 0;
+        this.hitFlashTime = 0;
+        this.fireEffectEnd = 0;
+
+        // Reset limbs
+        this.limbs = {
+            head: { status: 'ok', severed: false },
+            torso: { status: 'ok', severed: false },
+            leftArm: { status: 'ok', severed: false },
+            rightArm: { status: 'ok', severed: false },
+            leftLeg: { status: 'ok', severed: false },
+            rightLeg: { status: 'ok', severed: false },
+        };
+
+        // Reset velocity
+        this.vx = 0;
+        this.vy = 0;
+
+        // Give a fresh pistol with ammo (keep existing inventory but ensure weapon is usable)
+        if (this.weapon && this.weapon.ammo !== undefined) {
+            this.weapon.ammo = Math.max(this.weapon.ammo, 1);
+        }
+
+        // Reset wanted level on respawn (fresh start)
+        world.wantedLevel = 0;
+    }
 }

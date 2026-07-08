@@ -1709,14 +1709,38 @@ function gameLoop() {
     }
 
     if (player.isDead) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        // Dim the canvas
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 50px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+
+        // Show the HTML game-over screen with respawn button
+        const gameOverScreen = document.getElementById('game-over-screen');
+        if (gameOverScreen && gameOverScreen.style.display !== 'flex') {
+            gameOverScreen.style.display = 'flex';
+
+            // Wire the restart/respawn button (only once)
+            const restartBtn = document.getElementById('restart-button');
+            if (restartBtn && !restartBtn._respawnWired) {
+                restartBtn._respawnWired = true;
+                restartBtn.textContent = 'Respawn';
+                restartBtn.addEventListener('click', () => {
+                    player.respawn();
+                    gameOverScreen.style.display = 'none';
+                });
+            }
+        }
+
+        // Allow respawn via Space or Enter key
+        if (input.justPressed.has(' ') || input.justPressed.has('enter')) {
+            player.respawn();
+            gameOverScreen.style.display = 'none';
+        }
+    } else {
+        // Hide game-over screen if player is alive
+        const gameOverScreen = document.getElementById('game-over-screen');
+        if (gameOverScreen && gameOverScreen.style.display === 'flex') {
+            gameOverScreen.style.display = 'none';
+        }
     }
 
     // Update safehouse
