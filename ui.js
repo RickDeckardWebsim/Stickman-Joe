@@ -1097,11 +1097,7 @@ export function initUI(player) {
     healthBarContainer.appendChild(healthText);
     document.body.appendChild(healthBarContainer);
 
-    // --- Get Restart Button (now in HTML) ---
-    restartButton = document.getElementById('restart-button');
-    restartButton.onclick = () => {
-        window.location.reload();
-    };
+    // --- Restart button is handled by main.js game loop (respawn system) ---
 
     // --- Create UI Elements ---
     const inventoryToggleContainer = document.createElement('div');
