@@ -1070,6 +1070,24 @@ export default class Enemy {
             this.pukeEndTime = now + 1200 + Math.random() * 600;
             this.lastPukeTime = now;
             this.stressLevel = Math.max(this.stressLevel, 70);
+
+            // Fatal hit — dead NPCs never reach the update loop's puke emission,
+            // so spawn a death-puke burst directly here
+            if (this.health <= 0) {
+                const mouthX = this.x + Math.cos(this.facingAngle) * this.radius;
+                const mouthY = this.y + Math.sin(this.facingAngle) * this.radius;
+                const burstCount = 5 + Math.floor(Math.random() * 5);
+                for (let i = 0; i < burstCount; i++) {
+                    const pukeAngle = this.facingAngle + (Math.random() - 0.5) * 0.8;
+                    const speed = 1.5 + Math.random() * 3;
+                    particles.push(new PukeParticle(
+                        mouthX, mouthY,
+                        Math.cos(pukeAngle) * speed,
+                        Math.sin(pukeAngle) * speed,
+                        2 + Math.random() * 3
+                    ));
+                }
+            }
         }
 
         if (wasAlive && this.health <= 0) {
