@@ -39,6 +39,7 @@ let worldDecalCanvas;
 let worldDecalCtx;
 let bloodCanvas;
 let bloodCtx;
+let voidSwirlCanvas;
 
 // --- Rival Spawning ---
 let rivalHasSpawned = false;
@@ -1427,98 +1428,88 @@ function gameLoop() {
     const cameraTop = camera.y - canvas.height / 2;
 
     // --- Draw Trippy Void (outside world bounds) ---
-    // Animated void effect that fills the area beyond the world edges
+    // Optimized: pre-rendered static layers + cheap animated overlay
     const camLeft = camera.x - canvas.width / 2;
     const camTop = camera.y - canvas.height / 2;
     const camRight = camera.x + canvas.width / 2;
     const camBottom = camera.y + canvas.height / 2;
 
-    // Only draw the void if the camera can see outside the world
     if (camLeft < 0 || camTop < 0 || camRight > world.width || camBottom > world.height) {
-        const time = Date.now() * 0.001; // Time in seconds for animation
+        const time = Date.now() * 0.001;
+        const hueShift = (time * 20) % 360;
 
-        // Fill the entire screen with the void base
         ctx.save();
 
-        // Base void gradient — shifts colors over time
-        const hueShift = (time * 20) % 360;
-        const grad = ctx.createRadialGradient(
-            canvas.width / 2, canvas.height / 2, 0,
-            canvas.width / 2, canvas.height / 2, canvas.width
-        );
-        grad.addColorStop(0, `hsl(${hueShift}, 70%, 8%)`);
-        grad.addColorStop(0.5, `hsl(${(hueShift + 60) % 360}, 80%, 4%)`);
-        grad.addColorStop(1, `hsl(${(hueShift + 120) % 360}, 90%, 2%)`);
-        ctx.fillStyle = grad;
+        // 1. Solid dark base (no gradient — just one fillRect)
+        ctx.fillStyle = `hsl(${hueShift}, 70%, 5%)`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Swirling vortex lines
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const maxRadius = Math.hypot(canvas.width, canvas.height) / 2;
-
-        for (let i = 0; i < 60; i++) {
-            const angle = (i / 60) * Math.PI * 2 + time * 0.3;
-            const wave = Math.sin(time * 2 + i * 0.5) * 0.3 + 0.7;
-            const r1 = maxRadius * 0.2 * wave;
-            const r2 = maxRadius * wave;
-
-            ctx.strokeStyle = `hsla(${(hueShift + i * 6) % 360}, 90%, 50%, ${0.04 + Math.sin(time + i) * 0.03})`;
-            ctx.lineWidth = 2 + Math.sin(time * 3 + i) * 1;
-            ctx.beginPath();
-            ctx.moveTo(centerX + Math.cos(angle) * r1, centerY + Math.sin(angle) * r1);
-            // Spiral inward
-            for (let t = 0; t <= 1; t += 0.1) {
-                const r = r1 + (r2 - r1) * t;
-                const a = angle + t * 3;
-                ctx.lineTo(centerX + Math.cos(a) * r, centerY + Math.sin(a) * r);
+        // 2. Pre-rendered vortex swirls (drawn once, cached, just blitted + rotated)
+        if (!voidSwirlCanvas) {
+            voidSwirlCanvas = document.createElement('canvas');
+            voidSwirlCanvas.width = 512;
+            voidSwirlCanvas.height = 512;
+            const sctx = voidSwirlCanvas.getContext('2d');
+            const cx = 256, cy = 256;
+            for (let i = 0; i < 20; i++) {
+                const angle = (i / 20) * Math.PI * 2;
+                sctx.strokeStyle = `hsla(${i * 18}, 90%, 50%, 0.12)`;
+                sctx.lineWidth = 2;
+                sctx.beginPath();
+                for (let t = 0; t <= 1; t += 0.15) {
+                    const r = 50 + 200 * t;
+                    const a = angle + t * 3;
+                    sctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+                }
+                sctx.stroke();
             }
-            ctx.stroke();
         }
 
-        // Floating void particles — drifting stars/eyes
-        for (let i = 0; i < 40; i++) {
+        // Blit the swirl canvas, tiled and rotating slowly
+        ctx.globalAlpha = 0.6;
+        const rot = time * 0.2;
+        for (let x = -256; x < canvas.width + 256; x += 400) {
+            for (let y = -256; y < canvas.height + 256; y += 400) {
+                ctx.save();
+                ctx.translate(x + 200, y + 200);
+                ctx.rotate(rot);
+                ctx.drawImage(voidSwirlCanvas, -256, -256);
+                ctx.restore();
+            }
+        }
+        ctx.globalAlpha = 1;
+
+        // 3. Floating particles — reduced to 15, simple fillRect (no arcs)
+        for (let i = 0; i < 15; i++) {
             const seed = i * 137.5;
-            const px = ((Math.sin(time * 0.3 + seed) * 0.5 + 0.5) * canvas.width);
-            const py = ((Math.cos(time * 0.2 + seed * 1.3) * 0.5 + 0.5) * canvas.height);
-            const size = 1 + Math.sin(time * 2 + seed) * 1.5 + 1.5;
-            const alpha = 0.1 + Math.sin(time + seed) * 0.08;
-            const partHue = (hueShift + i * 9) % 360;
-
-            // Glow
-            ctx.fillStyle = `hsla(${partHue}, 90%, 60%, ${alpha * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(px, py, size * 3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Core
-            ctx.fillStyle = `hsla(${partHue}, 100%, 80%, ${alpha})`;
-            ctx.beginPath();
-            ctx.arc(px, py, size, 0, Math.PI * 2);
-            ctx.fill();
+            const px = (Math.sin(time * 0.3 + seed) * 0.5 + 0.5) * canvas.width;
+            const py = (Math.cos(time * 0.2 + seed * 1.3) * 0.5 + 0.5) * canvas.height;
+            const flicker = 0.15 + Math.sin(time * 2 + seed) * 0.1;
+            ctx.fillStyle = `hsla(${(hueShift + i * 24) % 360}, 90%, 70%, ${flicker})`;
+            ctx.fillRect(px - 1.5, py - 1.5, 3, 3);
         }
 
-        // Pulsing world border — glowing edge where the world meets the void
-        const worldLeft = 0 - camLeft;
-        const worldTop = 0 - camTop;
+        // 4. Pulsing world border — no shadowBlur (expensive), just double stroke
+        const worldLeft = -camLeft;
+        const worldTop = -camTop;
         const worldRight = world.width - camLeft;
         const worldBottom = world.height - camTop;
         const pulse = Math.sin(time * 3) * 0.3 + 0.7;
+        const borderHue = (hueShift + 180) % 360;
 
-        ctx.strokeStyle = `hsla(${(hueShift + 180) % 360}, 100%, 60%, ${pulse * 0.8})`;
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = `hsla(${(hueShift + 180) % 360}, 100%, 50%, ${pulse})`;
+        // Wide glow stroke (simulates blur without shadowBlur)
+        ctx.strokeStyle = `hsla(${borderHue}, 100%, 60%, ${pulse * 0.2})`;
+        ctx.lineWidth = 12;
         ctx.strokeRect(worldLeft, worldTop, worldRight - worldLeft, worldBottom - worldTop);
-        ctx.shadowBlur = 0;
 
-        // Inner glow on the world border
-        ctx.strokeStyle = `hsla(${(hueShift + 200) % 360}, 100%, 70%, ${pulse * 0.4})`;
-        ctx.lineWidth = 8;
+        // Sharp inner stroke
+        ctx.strokeStyle = `hsla(${borderHue}, 100%, 70%, ${pulse * 0.8})`;
+        ctx.lineWidth = 3;
         ctx.strokeRect(worldLeft, worldTop, worldRight - worldLeft, worldBottom - worldTop);
 
         ctx.restore();
     }
+
 
     // --- Draw Background & Decals (World-space) ---
     // Blit the pre-rendered static background from our offscreen canvas
