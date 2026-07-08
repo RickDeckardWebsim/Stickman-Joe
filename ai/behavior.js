@@ -101,11 +101,16 @@ export function decideState(enemy, player, distToPlayer, now) {
         const playerIsAggressive = world.playerHasBeenAggressive && distToPlayer < 600;
 
         if (aggressionNearby || playerIsAggressive) {
-            enemy.state = 'FLEEING'; 
-            enemy.fleeTarget = player; // Flee from the general direction of trouble
+            // Break any active conversation before fleeing
+            if (enemy.conversingWith) {
+                enemy.conversingWith.conversingWith = null;
+                enemy.conversingWith.state = 'PATROLLING';
+                enemy.conversingWith = null;
+            }
+            enemy.state = 'FLEEING';
+            enemy.fleeTarget = player;
             enemy.stateChangeCooldown = now + 1500;
         }
-        return;
     }
 
     // --- COMBAT LOGIC ---
@@ -400,13 +405,54 @@ export function runCivilianAI(enemy, player, now) {
     switch (enemy.state) {
         case 'PATROLLING':
             // The pathing logic is now handled by the main enemy update loop.
-            // This section just needs to ensure a path is set if one isn't already.
             if (!enemy.path || enemy.path.length === 0) {
                 const endPoint = getSidewalkPatrolPoint(world.city);
                 enemy.path = getSidewalkPath(world.city, enemy.x, enemy.y, endPoint.x, endPoint.y);
                 enemy.pathIndex = 0;
             }
             currentSpeed = enemy.patrolSpeed;
+
+            // --- Conversation trigger: find a nearby NPC to talk to ---
+            if (!enemy.conversingWith && Math.random() < 0.005 * enemy.socialness) {
+                for (const other of enemies) {
+                    if (other === enemy || other.health <= 0 || other.isCop || other.isHostileActor) continue;
+                    if (other.conversingWith) continue; // Already in a conversation
+                    const dist = Math.hypot(enemy.x - other.x, enemy.y - other.y);
+                    if (dist < 60 && dist > 20 && (other.state === 'PATROLLING' || other.state === 'IDLE')) {
+                        // Start conversation
+                        enemy.conversingWith = other;
+                        enemy.conversationEndTime = now + 3000 + Math.random() * 4000; // 3-7 seconds
+                        enemy.state = 'CONVERSING';
+                        enemy.path = [];
+                        other.conversingWith = enemy;
+                        other.conversationEndTime = enemy.conversationEndTime;
+                        other.state = 'CONVERSING';
+                        other.path = [];
+                        break;
+                    }
+                }
+            }
+            break;
+
+        case 'CONVERSING':
+            // Stand still and face the conversation partner
+            currentSpeed = 0;
+            if (!enemy.conversingWith || enemy.conversingWith.health <= 0 || now > enemy.conversationEndTime) {
+                // End conversation — form a relationship
+                if (enemy.conversingWith && enemy.conversingWith.health > 0) {
+                    enemy.relationships.add(enemy.conversingWith.enemyId);
+                    enemy.conversingWith.relationships.add(enemy.enemyId);
+                }
+                enemy.conversingWith = null;
+                enemy.state = 'PATROLLING';
+                enemy.path = [];
+            } else {
+                // Face the conversation partner
+                const partner = enemy.conversingWith;
+                const angle = Math.atan2(partner.y - enemy.y, partner.x - enemy.x);
+                enemy.facingAngle = angle;
+                enemy.angle = angle;
+            }
             break;
 
         case 'INVESTIGATING':

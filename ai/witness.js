@@ -53,10 +53,10 @@ export function witnessRelatedDeath(witness, deadEnemyId, corpse) {
     if (witness.relationships.has(deadEnemyId)) {
         witness.grievingTarget = corpse;
         witness.state = 'GRIEVING';
-                const griefDuration = 1000;
-        witness.stateChangeCooldown = Date.now() + griefDuration; 
+        const griefDuration = 5000 + Math.random() * 5000; // 5-10 seconds of active grief
+        witness.stateChangeCooldown = Date.now() + griefDuration;
         witness.reactionFlash = { type: 'grief', time: Date.now() };
-        witness.shockTime = Date.now() + 800;
+        witness.shockTime = Date.now() + 1500; // Longer shock for friend's death
     }
 }
 

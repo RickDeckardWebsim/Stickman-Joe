@@ -132,6 +132,8 @@ export default class Enemy {
         this.enemyId = Math.random().toString(36).substr(2, 9); // Unique ID
         this.grievingTarget = null; // Corpse or settled corpse being grieved
         this.lastTearTime = 0;
+        this.conversingWith = null; // Reference to NPC currently in conversation with
+        this.conversationEndTime = 0; // When the current conversation ends
         this.isCop = false;
         this.isHostileActor = false;
         this.civilianTarget = null;
@@ -1391,6 +1393,46 @@ export default class Enemy {
 
         // Draw Hat (or other accessories) for subclasses
         this.drawOverBody(ctx, player);
+
+        // --- Conversation speech bubble ---
+        if (this.conversingWith && this.state === 'CONVERSING') {
+            const now = Date.now();
+            const timeLeft = (this.conversationEndTime - now) / 1000;
+            if (timeLeft > 0) {
+                // Animated speech dots above the NPC's head
+                const bubbleY = -this.radius - 15;
+                const dotCount = 3;
+                const animPhase = (now * 0.005) % dotCount;
+
+                // Bubble background
+                ctx.save();
+                ctx.rotate(-this.facingAngle); // Un-rotate so bubble is upright
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.beginPath();
+                ctx.arc(0, bubbleY, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tail pointing down
+                ctx.beginPath();
+                ctx.moveTo(-3, bubbleY + 7);
+                ctx.lineTo(3, bubbleY + 7);
+                ctx.lineTo(0, bubbleY + 12);
+                ctx.closePath();
+                ctx.fill();
+
+                // Animated dots
+                for (let i = 0; i < dotCount; i++) {
+                    const dotPhase = (animPhase + i) % dotCount;
+                    const dotAlpha = dotPhase < 1 ? 1 : 0.3;
+                    const dotX = -5 + i * 5;
+                    ctx.fillStyle = `rgba(50, 50, 50, ${dotAlpha})`;
+                    ctx.beginPath();
+                    ctx.arc(dotX, bubbleY, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
 
         ctx.restore(); // un-rotate
 
