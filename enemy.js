@@ -1061,6 +1061,17 @@ export default class Enemy {
 
         createBloodSplatter(this.x, this.y, amount, impactAngle, { bloodyMess: options.bloodyMess });
 
+        // First time being shot — the shock of being wounded makes them puke.
+        // Runs before the death/survival branch so it triggers even on fatal hits.
+        if (wasAlive && !this.isZombie && !this._hasBeenShot) {
+            this._hasBeenShot = true;
+            const now = Date.now();
+            this.isPuking = true;
+            this.pukeEndTime = now + 1200 + Math.random() * 600;
+            this.lastPukeTime = now;
+            this.stressLevel = Math.max(this.stressLevel, 70);
+        }
+
         if (wasAlive && this.health <= 0) {
             // --- NPC DIED ---
             if (options.isHeadshot) {
@@ -1088,16 +1099,6 @@ export default class Enemy {
             const maxPainShockDuration = 700;
             this.shockTime = Math.max(this.shockTime, Date.now() + minPainShockDuration + Math.random() * (maxPainShockDuration - minPainShockDuration));
             this.reactionFlash = { type: 'fear', time: Date.now() };
-
-            // First time being shot — the shock of being wounded makes them puke
-            if (!this._hasBeenShot) {
-                this._hasBeenShot = true;
-                const now = Date.now();
-                this.isPuking = true;
-                this.pukeEndTime = now + 1200 + Math.random() * 600;
-                this.lastPukeTime = now;
-                this.stressLevel = Math.max(this.stressLevel, 70);
-            }
         }
     }
 
