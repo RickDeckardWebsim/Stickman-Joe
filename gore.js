@@ -189,6 +189,20 @@ export class PukeParticle extends Particle {
     }
 }
 
+// --- Bloody Puke Particle ---
+// Dark red-brown particle for late-stage infection — blood puke
+export class BloodyPukeParticle extends PukeParticle {
+    constructor(x, y, vx, vy, size) {
+        super(x, y, vx, vy, size);
+        // Dark blood-red with some brown mixed in — looks like vomiting blood
+        const r = 120 + Math.random() * 40;
+        const g = 10 + Math.random() * 20;
+        const b = 10 + Math.random() * 15;
+        this.color = `rgba(${r}, ${g}, ${b}, 0.9)`;
+        this.size = size * 1.2; // Slightly bigger — chunkier
+    }
+}
+
 import { Particle } from './particle.js';
 import { particles, world } from './world.js';
 import { RagdollPoint, RagdollStick } from './ragdoll.js';

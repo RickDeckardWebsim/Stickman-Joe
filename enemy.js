@@ -1,5 +1,5 @@
 import { world, enemies, particles, corpses, settledCorpses } from './world.js';
-import { createBloodSplatter, BloodParticle, PointBloodEmitter, PukeParticle } from './gore.js';
+import { createBloodSplatter, BloodParticle, PointBloodEmitter, PukeParticle, BloodyPukeParticle } from './gore.js';
 import { TearParticle } from './visual-effects.js';
 import { getSidewalkPatrolPoint, hasLineOfSight, getSidewalkPath, findNearestSidewalk, isOnSidewalk } from './city.js';
 import Ragdoll from './ragdoll.js';
@@ -182,6 +182,23 @@ export default class Enemy {
         this.lastPukeTime = 0;
         this.stressDecayRate = 0.5;
         this.pukeCooldown = 8000;
+
+        // --- Infection System (staged zombification) ---
+        this.isInfected = false;          // Has been injected/bitten — will turn eventually
+        this.infectionProgress = 0;       // 0-100, when it hits 100 the NPC turns into a zombie
+        this.infectionStage = 0;          // 0=incubation, 1=early, 2=advanced, 3=terminal
+        this.infectionRate = 0;           // How fast infection progresses per frame (set on infect)
+        this.lastInfectionPukeTime = 0;   // Cooldown for infection-triggered puking
+        this._originalColor = null;       // Saved color before infection greys the skin
+        this._originalSpeed = null;       // Saved speed before infection slows movement
+
+        // --- Zombie Degradation (rot over time) ---
+        this.zombieRotLevel = 0;          // 0-100, accumulates over time once zombified
+        this.lastRotTickTime = 0;         // When rot last ticked
+        this.lastRotDripTime = 0;         // When rot last dripped blood/fluid
+        this.zombieRotRate = 0.008;       // Rot accumulation per frame (~100 in ~3 min at 60fps)
+        this.zombieBrittle = false;       // At high rot, zombies take extra damage
+        this.zombieLimbLossStage = 0;     // 0=all limbs, 1=lost one arm, 2=lost second arm, 3=lost a leg (dies)
     }
 
     attemptPickpocket(player) {
@@ -446,6 +463,16 @@ export default class Enemy {
 
             // Trigger puking when stress is high enough
             this._tryPuke(now);
+        }
+
+        // --- Infection progression (runs for infected non-zombies) ---
+        if (this.isInfected && !this.isZombie) {
+            this._updateInfection(now);
+        }
+
+        // --- Zombie degradation (rot over time) ---
+        if (this.isZombie) {
+            this._updateZombieRot(now);
         }
 
         const buildings = world.city ? world.city.buildings : [];
@@ -848,7 +875,14 @@ export default class Enemy {
                 const pukeAngle = this.facingAngle + (Math.random() - 0.5) * 0.5;
                 const speed = 1 + Math.random() * 2;
 
-                particles.push(new PukeParticle(
+                // Late-stage infection (stage 2+) → bloody puke; stage 3 → mostly blood
+                const useBloodyPuke = this.isInfected && this.infectionStage >= 2;
+                const bloodyChance = this.infectionStage >= 3 ? 0.9 : 0.4;
+                const ParticleClass = (useBloodyPuke && Math.random() < bloodyChance)
+                    ? BloodyPukeParticle
+                    : PukeParticle;
+
+                particles.push(new ParticleClass(
                     mouthX, mouthY,
                     Math.cos(pukeAngle) * speed,
                     Math.sin(pukeAngle) * speed,
@@ -958,11 +992,10 @@ export default class Enemy {
     takeDamage(amount, impactAngle, options = {}) {
         if (this.health <= 0) return; // Already dead
 
-        // Zombification should happen before any damage is applied
-        // and should prevent any damage from being taken.
+        // Injection/bite — start staged infection instead of instant zombify
         if (options.onHitEffect === 'zombify') {
-            this.zombify();
-            return; // Stop further damage processing.
+            this.infect();
+            return; // Don't apply damage — the needle injects, doesn't wound
         }
 
         // Apply knockback if specified
@@ -973,6 +1006,11 @@ export default class Enemy {
         // Apply player damage multiplier
         if (options.owner === world.player) {
             amount *= settings.playerDamageMultiplier;
+        }
+
+        // Brittle zombies (high rot) take extra damage — their bodies are falling apart
+        if (this.isZombie && this.zombieBrittle) {
+            amount *= 1.5;
         }
 
         // --- Dismemberment Logic ---
@@ -1200,22 +1238,106 @@ export default class Enemy {
                 // A bite is a crime witnesses can react to
                 checkCrimeWitnesses(this, 'zombie_attack', target);
 
-                // Zombify target
-                if (target.zombify) {
-                    target.zombify();
+            }
+        }
+    }
+
+    infect() {
+        if (this.isZombie || this.isInfected) return;
+        this.isInfected = true;
+        this.infectionProgress = 0;
+        this.infectionStage = 0;
+        // Infection takes 60-120 seconds to fully turn the NPC at 60fps
+        // 100 / (60fps * 90s) ≈ 0.0185 per frame; randomize 0.01–0.03
+        this.infectionRate = 0.01 + Math.random() * 0.02;
+        if (!this._originalColor) this._originalColor = this.color;
+        if (!this._originalSpeed) this._originalSpeed = this.speed;
+        // NPC doesn't know it's sick yet — starts as a subtle malaise
+        this.stressLevel += 10;
+    }
+
+    _updateInfection(now) {
+        if (!this.isInfected || this.isZombie) return;
+
+        // Progress the infection
+        this.infectionProgress += this.infectionRate;
+        const prevStage = this.infectionStage;
+
+        // Determine stage based on progress
+        if (this.infectionProgress < 20) {
+            this.infectionStage = 0; // Incubation
+        } else if (this.infectionProgress < 45) {
+            this.infectionStage = 1; // Early — random puking
+        } else if (this.infectionProgress < 75) {
+            this.infectionStage = 2; // Advanced — frequent puking, slowing down
+        } else {
+            this.infectionStage = 3; // Terminal — bloody puke, barely moving
+        }
+
+        // Apply stage effects
+        // Stage 1: Pale skin, occasional puking, mild stress
+        if (this.infectionStage >= 1) {
+            this.color = this._paleBlend(this._originalColor, 0.3 + (this.infectionStage - 1) * 0.15);
+            this.stressLevel = Math.max(this.stressLevel, 30 + this.infectionStage * 10);
+
+            // Random puking — more frequent as infection advances
+            const pukeInterval = [0, 8000, 4000, 2000][this.infectionStage];
+            if (pukeInterval > 0 && now - this.lastInfectionPukeTime > pukeInterval) {
+                if (Math.random() < 0.1) {
+                    this.lastInfectionPukeTime = now;
+                    this.isPuking = true;
+                    this.pukeEndTime = now + 1000 + Math.random() * 800;
+                    this.lastPukeTime = now;
                 }
             }
         }
+
+        // Stage 2: Slow down, greenish tint
+        if (this.infectionStage >= 2) {
+            this.speed = this._originalSpeed * (1 - (this.infectionProgress - 45) / 100);
+            this.speed = Math.max(this.speed, this._originalSpeed * 0.4); // Don't go below 40%
+        }
+
+        // Stage 3: Terminal — bloody puke, health draining, barely moving
+        if (this.infectionStage >= 3) {
+            // Health slowly drains in terminal stage
+            this.health -= 0.05;
+            // Bloody puke particles are handled in _tryPuke via infectionStage check
+        }
+
+        // Turn into a zombie at 100%
+        if (this.infectionProgress >= 100) {
+            this.zombify();
+        }
+    }
+
+    _paleBlend(originalColor, amount) {
+        // Blend the original skin color toward a pale/greyish tone
+        // Parse hex color
+        if (!originalColor || !originalColor.startsWith('#')) return originalColor;
+        const hex = originalColor.slice(1);
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        // Blend toward grey-green (pale sick look)
+        const targetR = 160, targetG = 165, targetB = 150;
+        const nr = Math.round(r + (targetR - r) * amount);
+        const ng = Math.round(g + (targetG - g) * amount);
+        const nb = Math.round(b + (targetB - b) * amount);
+        return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
     }
 
     zombify() {
         if (this.isZombie) return;
 
         this.isZombie = true;
+        this.isInfected = false;       // Infection is over — now a zombie
+        this.infectionProgress = 0;
+        this.infectionStage = 0;
         this.health = this.maxHealth * 1.5; // Zombies are tougher
         this.maxHealth *= 1.5;
         this.color = '#5a7d59'; // Sickly green
-        this.speed *= 0.7; // Shamble
+        this.speed = (this._originalSpeed || this.speed) * 0.7; // Shamble
         this.state = 'CHASING'; // Immediately start hunting
         this.weapon = null; // Zombies don't use guns
         this.bravery = 1.0;
@@ -1226,8 +1348,112 @@ export default class Enemy {
         this.policeTarget = null;
         this.fleeTarget = null;
         this.lastBiteTime = Date.now(); // Prevent immediate bite — let grab start first
-        // Play a sound effect?
-        // playSound('zombie_turn');
+        // Reset rot tracking
+        this.zombieRotLevel = 0;
+        this.lastRotTickTime = Date.now();
+        this.lastRotDripTime = Date.now();
+    }
+
+    _updateZombieRot(now) {
+        // Accumulate rot over time — zombies decay and eventually die
+        this.zombieRotLevel += this.zombieRotRate;
+
+        // Color shift: sickly green → dark brown/grey as rot increases
+        const rot = this.zombieRotLevel / 100; // 0-1
+        if (rot < 0.5) {
+            // Green → olive-brown
+            const t = rot * 2;
+            const r = Math.round(90 + t * 30);
+            const g = Math.round(125 - t * 35);
+            const b = Math.round(89 - t * 40);
+            this.color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        } else {
+            // Olive-brown → dark grey-brown
+            const t = (rot - 0.5) * 2;
+            const r = Math.round(120 - t * 50);
+            const g = Math.round(90 - t * 40);
+            const b = Math.round(49 - t * 20);
+            this.color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        // At 40% rot: become brittle — take extra damage from all sources
+        if (rot > 0.4) {
+            this.zombieBrittle = true;
+        }
+
+        // Periodic rot-blood drips (dark, slow fluid leak)
+        if (now - this.lastRotDripTime > 3000 - rot * 1500) {
+            this.lastRotDripTime = now;
+            // Small dark blood drip
+            const dripAngle = Math.random() * Math.PI * 2;
+            particles.push(new BloodParticle(
+                this.x, this.y + this.radius * 0.5,
+                Math.cos(dripAngle) * 0.5,
+                Math.sin(dripAngle) * 0.5 + 0.3,
+                1 + Math.random() * 1.5
+            ));
+        }
+
+        // At 60% rot: lose first arm
+        if (rot > 0.6 && this.zombieLimbLossStage === 0) {
+            this.zombieLimbLossStage = 1;
+            this._rotDismember('leftArm');
+        }
+
+        // At 75% rot: lose second arm
+        if (rot > 0.75 && this.zombieLimbLossStage === 1) {
+            this.zombieLimbLossStage = 2;
+            this._rotDismember('rightArm');
+        }
+
+        // At 90% rot: lose a leg and die
+        if (rot > 0.9 && this.zombieLimbLossStage === 2) {
+            this.zombieLimbLossStage = 3;
+            this._rotDismember('leftLeg');
+            // Leg loss is fatal — zombie collapses and dies
+            this.health = 0;
+            this.deathType = 'rot';
+        }
+
+        // At 100% rot: die from total decay (if somehow still alive)
+        if (rot >= 1.0 && this.health > 0) {
+            this.health = 0;
+            this.deathType = 'rot';
+        }
+    }
+
+    _rotDismember(limbName) {
+        // Rot-based limb loss — no impact angle, limb just falls off
+        if (!this.limbs[limbName]) return;
+        this.limbs[limbName] = false;
+
+        // Create a severed limb ragdoll that drops limply
+        const limbConfig = { leftArm: false, rightArm: false, leftLeg: false, rightLeg: false };
+        limbConfig[limbName] = true;
+
+        // Drop position based on limb
+        let dropX = this.x, dropY = this.y;
+        if (limbName === 'leftArm') { dropX -= this.radius * 0.7; dropY -= this.radius * 0.5; }
+        else if (limbName === 'rightArm') { dropX += this.radius * 0.7; dropY -= this.radius * 0.5; }
+        else if (limbName === 'leftLeg') { dropX -= this.radius * 0.3; dropY += this.radius * 0.5; }
+        else if (limbName === 'rightLeg') { dropX += this.radius * 0.3; dropY += this.radius * 0.5; }
+
+        // Limp drop — minimal launch velocity
+        const dropVelocity = { x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2 };
+        const severedLimb = new Ragdoll(dropX, dropY, dropVelocity, this.color, {
+            limbs: limbConfig,
+            isHeadExploded: true,
+            isSeveredLimb: true,
+            severedLimbType: limbName
+        });
+        corpses.push(severedLimb);
+
+        // Small blood splatter at the stump
+        createBloodSplatter(dropX, dropY, 30, Math.random() * Math.PI * 2);
+        // Slow blood drip from the stump
+        if (severedLimb.neckPoint) {
+            particles.push(new PointBloodEmitter(severedLimb.neckPoint, 800));
+        }
     }
 
     // --- Zombie Grab: lock onto living target, deal progressive damage, hoard mechanic ---
