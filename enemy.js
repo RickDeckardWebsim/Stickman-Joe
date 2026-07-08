@@ -481,9 +481,60 @@ export default class Enemy {
             }
         }
         
-        // Combine goal-seeking and separation forces
-        const moveDx = goalDx + separationDx * separationWeight;
-        const moveDy = goalDy + separationDy * separationWeight;
+        // --- Building Avoidance Steering ---
+        // Proactive: steer away from buildings before walking into them.
+        // This prevents the "infinitely walking into walls" bug.
+        let avoidDx = 0;
+        let avoidDy = 0;
+        // Compute initial movement direction from goal + separation (before avoidance)
+        const initialMoveDx = goalDx + separationDx * separationWeight;
+        const initialMoveDy = goalDy + separationDy * separationWeight;
+        const initialMag = Math.hypot(initialMoveDx, initialMoveDy);
+
+        if (world.city && initialMag > 0.1) {
+            const moveDirX = initialMoveDx / initialMag;
+            const moveDirY = initialMoveDy / initialMag;
+            const lookAheadDist = this.radius + 25;
+            const checkX = this.x + moveDirX * lookAheadDist;
+            const checkY = this.y + moveDirY * lookAheadDist;
+
+            for (const building of world.city.buildings) {
+                // Quick AABB bounds check — skip buildings far away
+                if (checkX + this.radius < building.x || checkX - this.radius > building.x + building.width ||
+                    checkY + this.radius < building.y || checkY - this.radius > building.y + building.height) continue;
+
+                // About to walk into this building — steer away from the wall
+                const closestX = Math.max(building.x, Math.min(checkX, building.x + building.width));
+                const closestY = Math.max(building.y, Math.min(checkY, building.y + building.height));
+                const wallDx = checkX - closestX;
+                const wallDy = checkY - closestY;
+                const wallDist = Math.hypot(wallDx, wallDy);
+
+                if (wallDist < this.radius + 10) {
+                    if (wallDist > 0) {
+                        // Push away from the wall surface — creates a sliding effect
+                        const pushStrength = (this.radius + 10 - wallDist) * 0.5;
+                        avoidDx += (wallDx / wallDist) * pushStrength;
+                        avoidDy += (wallDy / wallDist) * pushStrength;
+                    } else {
+                        // Inside the building's influence zone — push toward nearest edge
+                        const distLeft = checkX - building.x;
+                        const distRight = (building.x + building.width) - checkX;
+                        const distTop = checkY - building.y;
+                        const distBottom = (building.y + building.height) - checkY;
+                        const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+                        if (minDist === distLeft) avoidDx -= 3;
+                        else if (minDist === distRight) avoidDx += 3;
+                        else if (minDist === distTop) avoidDy -= 3;
+                        else avoidDy += 3;
+                    }
+                }
+            }
+        }
+
+        // Combine goal-seeking, separation, and avoidance forces
+        const moveDx = initialMoveDx + avoidDx * 3;
+        const moveDy = initialMoveDy + avoidDy * 3;
 
         const moveMag = Math.hypot(moveDx, moveDy);
         if (moveMag > 0.1) {
@@ -676,7 +727,7 @@ export default class Enemy {
             const distMoved = Math.hypot(this.x - this.lastPosition.x, this.y - this.lastPosition.y);
             if (this.isMoving && distMoved < 1) { // If trying to move but moved less than 1 pixel
                 this.stuckCounter++;
-                if (this.stuckCounter > 2) { // Stuck for 3 checks
+                if (this.stuckCounter > 0) { // Stuck for 1 check (1 second) — clear path immediately
                     this.path = []; // Clear path and force recalculation on next AI tick
                     this.patrolTarget = null;
                     this.stuckCounter = 0;
@@ -790,7 +841,7 @@ export default class Enemy {
                 // If following a path and hit a building, the path is likely bad.
                 if (this.path && this.path.length > 0) {
                     this.stuckCounter++;
-                    if (this.stuckCounter > 1) { // If stuck for more than one frame
+                    if (this.stuckCounter > 0) { // Clear path immediately on first building collision
                         this.path = [];
                         this.patrolTarget = null; // Also reset patrol target
                     }
