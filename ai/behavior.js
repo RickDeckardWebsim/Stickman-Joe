@@ -351,12 +351,13 @@ export function runCivilianAI(enemy, player, now) {
             }
         }
 
-        if (now - enemy.lastSeenFleeTargetTime > FEAR_LOS_COOLDOWN) {
-            // Lost sight of threat for long enough, calm down
+        // Lost sight of threat — but stay scared if we recently HEARD a gunshot
+        if (now - enemy.lastSeenFleeTargetTime > FEAR_LOS_COOLDOWN && now > (enemy._heardGunshotUntil || 0)) {
+            // Lost sight AND hearing expired — calm down
             enemy.state = 'PATROLLING';
             enemy.fleeTarget = null;
             enemy.routeWaypoints = [];
-            enemy.stateChangeCooldown = now + 2000; // Small cooldown before doing something else
+            enemy.stateChangeCooldown = now + 2000;
             return { goalDx: 0, goalDy: 0, currentSpeed: 0 };
         }
         

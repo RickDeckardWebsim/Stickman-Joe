@@ -176,7 +176,8 @@ export function alertGunshot(x, y) {
             } else if (!npc.isZombie) {
                 npc.state = 'FLEEING';
                 npc.fleeTarget = world.player;
-                npc.lastSeenFleeTargetTime = Date.now() + 5000; // +5s so hearing-based fear lasts longer than 500ms LOS check
+                npc.lastSeenFleeTargetTime = Date.now();
+                npc._heardGunshotUntil = Date.now() + 5000; // Stay scared for 5s even without LOS
                 npc.stateChangeCooldown = Date.now() + 4000 + Math.random() * 3000;
                 npc.reactionFlash = { type: 'fear', time: Date.now() };
             }
