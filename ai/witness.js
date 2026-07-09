@@ -206,7 +206,7 @@ export function witnessFriendHurt(witness, aggressor, victim) {
     if (witness.health <= 0 || witness.isZombie || witness.isCop) return;
     // Guard against re-entrancy — once a friend has entered a defensive/fleeing
     // state, subsequent hits to the same victim must not stack boosts.
-    if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING', 'ATTACKING_CIVILIAN', 'PLAYING_CATCH'].includes(witness.state)) return;
+    if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING', 'ATTACKING_CIVILIAN'].includes(witness.state)) return;
 
     const strength = witness.getRelationshipStrength(victim.enemyId);
     if (strength < settings.friendHurtThreshold) return; // Too distant to care
