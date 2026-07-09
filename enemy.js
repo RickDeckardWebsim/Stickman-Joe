@@ -5,7 +5,7 @@ import { getSidewalkPatrolPoint, hasLineOfSight, getSidewalkPath, findNearestSid
 import Ragdoll from './ragdoll.js';
 import { playSound } from './audio.js';
 import { runCivilianAI, runCombatAI, runZombieAI, runGrievingBehavior, findSocialTarget, decideState, predictTargetPosition } from './ai/behavior.js';
-import { witnessCrime, witnessDeath, witnessRelatedDeath, spreadPanic, checkCrimeWitnesses } from './ai/witness.js';
+import { witnessCrime, witnessDeath, witnessRelatedDeath, spreadPanic, checkCrimeWitnesses, witnessFriendHurt } from './ai/witness.js';
 import { Pistol } from './pistol.js';
 import { settings } from './options.js';
 
@@ -970,7 +970,7 @@ export default class Enemy {
 
     witnessCrime(crimeType, criminal, victim) {
         // Don't react if already in combat, fleeing, or grieving
-        if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING'].includes(this.state)) return;
+        if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING', 'ATTACKING_CIVILIAN'].includes(this.state)) return;
 
         if (this.isCop) {
             if (criminal === world.player) {
@@ -1137,6 +1137,14 @@ export default class Enemy {
             const maxPainShockDuration = 700;
             this.shockTime = Math.max(this.shockTime, Date.now() + minPainShockDuration + Math.random() * (maxPainShockDuration - minPainShockDuration));
             this.reactionFlash = { type: 'fear', time: Date.now() };
+
+            // Notify friends of the hurt — they may defend or flee
+            if (options.owner) {
+                for (const friend of enemies) {
+                    if (friend === this || friend === options.owner) continue;
+                    witnessFriendHurt(friend, options.owner, this);
+                }
+            }
         }
     }
 

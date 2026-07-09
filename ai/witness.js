@@ -1,5 +1,6 @@
 import { world, enemies } from '../world.js';
 import { hasLineOfSight } from '../city.js';
+import { Pistol } from '../pistol.js';
 
 // === Detection System Constants ===
 const VISION_RANGE = 500;
@@ -195,5 +196,63 @@ export function updateAlerts() {
         if (now - activeAlerts[i].time > ALERT_DURATION) {
             activeAlerts.splice(i, 1);
         }
+    }
+}
+
+// === Friend Hurt — friends defend or flee based on bravery and bond ===
+export function witnessFriendHurt(witness, aggressor, victim) {
+    if (witness === victim || witness === aggressor) return;
+    if (witness.health <= 0 || witness.isZombie || witness.isCop) return;
+    // Guard against re-entrancy — once a friend has entered a defensive/fleeing
+    // state, subsequent hits to the same victim must not stack boosts.
+    if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING', 'ATTACKING_CIVILIAN', 'PLAYING_CATCH'].includes(witness.state)) return;
+
+    const strength = witness.getRelationshipStrength(victim.enemyId);
+    if (strength < 0.2) return; // Too distant to care
+
+    // Break any social activity
+    if (witness.conversingWith) {
+        witness.conversingWith.conversingWith = null;
+        witness.conversingWith.state = 'PATROLLING';
+        witness.conversingWith = null;
+    }
+    if (witness.playingCatchWith) {
+        witness.playingCatchWith.playingCatchWith = null;
+        witness.playingCatchWith.ballState = null;
+        witness.playingCatchWith.state = 'PATROLLING';
+        witness.playingCatchWith.path = [];
+        witness.playingCatchWith = null;
+        witness.ballState = null;
+    }
+
+    const isBrave = witness.bravery > 0.25 && strength > 0.4;
+
+    if (isBrave) {
+        // Fight the aggressor
+        if (!witness.weapon) {
+            witness.weapon = new Pistol(witness);
+            witness.weapon.reserveAmmo = 30;
+        }
+        witness.reactionFlash = { type: 'anger', time: Date.now() };
+        witness.aggressiveness = Math.min(1.0, witness.aggressiveness + strength * 0.3);
+
+        if (aggressor === world.player) {
+            // Player aggressor — use combat path, target resolves to player
+            witness.isHostileActor = true;
+            witness.state = 'CHASING';
+            witness.lastKnownPlayerPos = { x: aggressor.x, y: aggressor.y };
+        } else {
+            // NPC aggressor — use civilian combat path, targets the aggressor
+            witness.state = 'ATTACKING_CIVILIAN';
+            witness.civilianTarget = aggressor;
+        }
+    } else {
+        // Flee in heightened panic
+        witness.state = 'FLEEING';
+        witness.fleeTarget = aggressor;
+        witness.lastSeenFleeTargetTime = Date.now();
+        witness.reactionFlash = { type: 'fear', time: Date.now() };
+        witness.stressLevel = Math.min(100, witness.stressLevel + 30 * strength);
+        witness.stateChangeCooldown = Date.now() + 2000 + strength * 3000;
     }
 }
