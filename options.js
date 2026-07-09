@@ -33,6 +33,15 @@ let playerHealthMultiplier = 1.0;
 /* @tweakable Multiplier for enemies' max health */
 let enemyHealthMultiplier = 1.0;
 
+/* @tweakable Chance for social NPCs to seek parks when patrolling (0-1, multiplied by socialness) */
+let parkSeekChance = 0.12;
+/* @tweakable Strength gained per completed conversation (0-1) */
+let conversationBondGain = 0.15;
+/* @tweakable Strength gained per completed catch session (0-1) */
+let catchBondGain = 0.25;
+/* @tweakable Minimum relationship strength to trigger defensive reaction (0-1) */
+let friendHurtThreshold = 0.2;
+
 /* @tweakable The duration of the advanced options dropdown animation in seconds. */
 const advancedOptionsAnimationDuration = 0.3;
 
@@ -71,6 +80,14 @@ export const settings = {
     set playerHealthMultiplier(value) { playerHealthMultiplier = value; },
     get enemyHealthMultiplier() { return enemyHealthMultiplier; },
     set enemyHealthMultiplier(value) { enemyHealthMultiplier = value; },
+    get parkSeekChance() { return parkSeekChance; },
+    set parkSeekChance(value) { parkSeekChance = value; },
+    get conversationBondGain() { return conversationBondGain; },
+    set conversationBondGain(value) { conversationBondGain = value; },
+    get catchBondGain() { return catchBondGain; },
+    set catchBondGain(value) { catchBondGain = value; },
+    get friendHurtThreshold() { return friendHurtThreshold; },
+    set friendHurtThreshold(value) { friendHurtThreshold = value; },
 };
 
 function saveSettings() {

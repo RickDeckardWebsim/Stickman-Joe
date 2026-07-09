@@ -1,6 +1,7 @@
 import { world, enemies } from '../world.js';
 import { hasLineOfSight } from '../city.js';
 import { Pistol } from '../pistol.js';
+import { settings } from '../options.js';
 
 // === Detection System Constants ===
 const VISION_RANGE = 500;
@@ -208,7 +209,7 @@ export function witnessFriendHurt(witness, aggressor, victim) {
     if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING', 'ATTACKING_CIVILIAN', 'PLAYING_CATCH'].includes(witness.state)) return;
 
     const strength = witness.getRelationshipStrength(victim.enemyId);
-    if (strength < 0.2) return; // Too distant to care
+    if (strength < settings.friendHurtThreshold) return; // Too distant to care
 
     // Break any social activity
     if (witness.conversingWith) {

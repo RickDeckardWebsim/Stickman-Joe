@@ -1,5 +1,6 @@
 import { world, enemies, corpses, settledCorpses } from '../world.js';
 import { getSidewalkPatrolPoint, hasLineOfSight, getSidewalkPath, findNearestSidewalk, isOnSidewalk, getParkPoint } from '../city.js';
+import { settings } from '../options.js';
 
 /* @tweakable [Distance from commander for military units to maintain formation.] */
 const COMMANDER_FOLLOW_DISTANCE = 80;
@@ -426,7 +427,7 @@ export function runCivilianAI(enemy, player, now) {
             if (!enemy.path || enemy.path.length === 0) {
                 let endPoint;
                 // Social NPCs occasionally head to a park instead of a sidewalk point
-                if (Math.random() < 0.12 * enemy.socialness) {
+                if (Math.random() < settings.parkSeekChance * enemy.socialness) {
                     endPoint = getParkPoint(world.city);
                 }
                 if (!endPoint) {
@@ -492,8 +493,9 @@ export function runCivilianAI(enemy, player, now) {
             if (!enemy.conversingWith || enemy.conversingWith.health <= 0 || now > enemy.conversationEndTime) {
                 // End conversation — form a relationship
                 if (enemy.conversingWith && enemy.conversingWith.health > 0) {
-                    enemy.addRelationshipStrength(enemy.conversingWith.enemyId, 0.15);
-                    enemy.conversingWith.addRelationshipStrength(enemy.enemyId, 0.15);
+                    enemy.addRelationshipStrength(enemy.conversingWith.enemyId, settings.conversationBondGain);
+                    enemy.conversingWith.addRelationshipStrength(enemy.enemyId, settings.conversationBondGain);
+                    enemy.conversingWith.conversingWith = null; // prevent partner double-accrue
                 }
                 enemy.conversingWith = null;
                 enemy.state = 'PATROLLING';
@@ -514,9 +516,11 @@ export function runCivilianAI(enemy, player, now) {
                 if (enemy.playingCatchWith && enemy.playingCatchWith.health > 0) {
                     // Only gain bond if at least one throw completed
                     if (enemy.ballState || enemy.playingCatchWith.ballState) {
-                        enemy.addRelationshipStrength(enemy.playingCatchWith.enemyId, 0.25);
-                        enemy.playingCatchWith.addRelationshipStrength(enemy.enemyId, 0.25);
+                        enemy.addRelationshipStrength(enemy.playingCatchWith.enemyId, settings.catchBondGain);
+                        enemy.playingCatchWith.addRelationshipStrength(enemy.enemyId, settings.catchBondGain);
                     }
+                    enemy.playingCatchWith.playingCatchWith = null; // prevent partner double-accrue
+                    enemy.playingCatchWith.ballState = null;
                 }
                 enemy.playingCatchWith = null;
                 enemy.ballState = null;

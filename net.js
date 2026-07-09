@@ -495,7 +495,13 @@ export function snapshotEnemy(e) {
         la: e.limbs.leftArm !== false,
         ra: e.limbs.rightArm !== false,
         ll: e.limbs.leftLeg !== false,
-        rl: e.limbs.rightLeg !== false
+        rl: e.limbs.rightLeg !== false,
+        ballX: (e.ballState && e.ballState.phase === 'inFlight')
+            ? Math.round((e.ballState.fromX + (e.ballState.toX - e.ballState.fromX) * e.ballState.progress) * 10) / 10
+            : null,
+        ballY: (e.ballState && e.ballState.phase === 'inFlight')
+            ? Math.round(((e.ballState.fromY + (e.ballState.toY - e.ballState.fromY) * e.ballState.progress) - Math.sin(e.ballState.progress * Math.PI) * 20) * 10) / 10
+            : null
     };
 }
 

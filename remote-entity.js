@@ -48,6 +48,17 @@ export function drawEnemy(ctx, snap) {
     }
 
     ctx.restore();
+
+    // Draw catch ball in world space (outside NPC transform)
+    if (snap.ballX !== null && snap.ballY !== null) {
+        ctx.beginPath();
+        ctx.arc(snap.ballX, snap.ballY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#e8e8e8';
+        ctx.fill();
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
 }
 
 export function drawPlayer(ctx, snap) {
