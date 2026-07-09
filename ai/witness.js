@@ -125,14 +125,17 @@ export function witnessDeath(witness, deathX, deathY) {
 
 // === Witness Related Death (grief) ===
 export function witnessRelatedDeath(witness, deadEnemyId, corpse) {
-    if (witness.relationships.has(deadEnemyId)) {
-        witness.grievingTarget = corpse;
-        witness.state = 'GRIEVING';
-        const griefDuration = 5000 + Math.random() * 5000;
-        witness.stateChangeCooldown = Date.now() + griefDuration;
-        witness.reactionFlash = { type: 'grief', time: Date.now() };
-        witness.shockTime = Date.now() + 1500;
-    }
+    const strength = witness.getRelationshipStrength(deadEnemyId);
+    if (strength <= 0) return;
+    witness.grievingTarget = corpse;
+    witness.state = 'GRIEVING';
+    // Scale duration by bond: 3s acquaintance → 15s best friend
+    const griefDuration = 3000 + strength * 12000 + Math.random() * 3000;
+    witness.stateChangeCooldown = Date.now() + griefDuration;
+    witness.reactionFlash = { type: 'grief', time: Date.now() };
+    witness.shockTime = Date.now() + 1000 + strength * 2000;
+    // Stress spike scaled by closeness
+    witness.stressLevel = Math.max(witness.stressLevel, 40 + strength * 40);
 }
 
 // === Panic Spreading — now requires vision ===

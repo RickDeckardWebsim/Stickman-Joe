@@ -379,9 +379,10 @@ function assignRelationships(newEnemy) {
             if (existingEnemy === newEnemy) continue;
             
             // 15% chance to form a relationship with each existing enemy
-            if (Math.random() < 0.15) {
-                newEnemy.relationships.add(existingEnemy.enemyId);
-                existingEnemy.relationships.add(newEnemy.enemyId);
+                if (Math.random() < 0.15) {
+                    const strength = 0.3 + Math.random() * 0.3; // 0.3–0.6
+                    newEnemy.setRelationship(existingEnemy.enemyId, strength);
+                    existingEnemy.setRelationship(newEnemy.enemyId, strength);
                 relationshipCount++;
             }
         }
@@ -537,8 +538,8 @@ function spawnLawEnforcementSquad(size, canvas, UnitClass, alertToZombies = fals
     // Establish relationships so they react to each other's deaths
     for (let i = 0; i < squad.length; i++) {
         for (let j = i + 1; j < squad.length; j++) {
-            squad[i].relationships.add(squad[j].enemyId);
-            squad[j].relationships.add(squad[i].enemyId);
+            squad[i].setRelationship(squad[j].enemyId, 0.7);
+            squad[j].setRelationship(squad[i].enemyId, 0.7);
         }
     }
 }

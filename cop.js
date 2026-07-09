@@ -191,10 +191,11 @@ export default class Cop extends Enemy {
     }
     
     witnessRelatedDeath(deadEnemyId, corpse) {
-        if (this.relationships.has(deadEnemyId)) {
-            // Enraged response to losing a squadmate
-            this.aggressiveness = Math.min(1.0, this.aggressiveness + 0.3);
-            this.bravery = Math.min(1.0, this.bravery + 0.2);
+        const strength = this.getRelationshipStrength(deadEnemyId);
+        if (strength > 0.3) {
+            // Enraged response to losing a squadmate — scaled by bond strength
+            this.aggressiveness = Math.min(1.0, this.aggressiveness + strength * 0.3);
+            this.bravery = Math.min(1.0, this.bravery + strength * 0.2);
             this.reactionFlash = { type: 'anger', time: Date.now() }; // Use anger flash
             this.shockTime = Date.now() + 200; // Very brief shock, like a pause before action
             this.state = 'CHASING'; // Charge the player!

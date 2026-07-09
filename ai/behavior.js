@@ -441,8 +441,8 @@ export function runCivilianAI(enemy, player, now) {
             if (!enemy.conversingWith || enemy.conversingWith.health <= 0 || now > enemy.conversationEndTime) {
                 // End conversation — form a relationship
                 if (enemy.conversingWith && enemy.conversingWith.health > 0) {
-                    enemy.relationships.add(enemy.conversingWith.enemyId);
-                    enemy.conversingWith.relationships.add(enemy.enemyId);
+                    enemy.addRelationshipStrength(enemy.conversingWith.enemyId, 0.15);
+                    enemy.conversingWith.addRelationshipStrength(enemy.enemyId, 0.15);
                 }
                 enemy.conversingWith = null;
                 enemy.state = 'PATROLLING';

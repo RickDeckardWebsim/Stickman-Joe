@@ -128,12 +128,15 @@ export default class Enemy {
         this.searchEndTime = 0;
 
         // --- Relationship System ---
-        this.relationships = new Set(); // Set of enemy IDs this enemy cares about
+        this.relationships = new Map(); // Map<enemyId, strength(0..1)>
         this.enemyId = Math.random().toString(36).substr(2, 9); // Unique ID
         this.grievingTarget = null; // Corpse or settled corpse being grieved
         this.lastTearTime = 0;
         this.conversingWith = null; // Reference to NPC currently in conversation with
         this.conversationEndTime = 0; // When the current conversation ends
+        this.playingCatchWith = null; // Reference to NPC currently playing catch with
+        this.playCatchEndTime = 0; // When the current catch session ends
+        this.ballState = null; // { phase, progress, fromX, fromY, toX, toY, holdUntil } — local cosmetic
         this.isCop = false;
         this.isHostileActor = false;
         this.civilianTarget = null;
@@ -992,6 +995,23 @@ export default class Enemy {
             this.stateChangeCooldown = Date.now() + 5000 + Math.random() * 3000;
             this.reactionFlash = { type: 'fear', time: Date.now() };
         }
+    }
+
+    setRelationship(id, strength) {
+        this.relationships.set(id, Math.min(1, Math.max(0, strength)));
+    }
+
+    addRelationshipStrength(id, delta) {
+        const current = this.relationships.get(id) || 0;
+        this.setRelationship(id, current + delta);
+    }
+
+    getRelationshipStrength(id) {
+        return this.relationships.get(id) || 0;
+    }
+
+    hasRelationship(id) {
+        return this.getRelationshipStrength(id) > 0;
     }
 
     takeDamage(amount, impactAngle, options = {}) {
