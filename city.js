@@ -654,6 +654,16 @@ export function getSidewalkPatrolPoint(city) {
     return { x, y };
 }
 
+export function getParkPoint(city) {
+    if (!city || !city.grassAreas || city.grassAreas.length === 0) return null;
+    const park = city.grassAreas[Math.floor(Math.random() * city.grassAreas.length)];
+    const padding = 0.15;
+    return {
+        x: park.x + park.width * (padding + Math.random() * (1 - 2 * padding)),
+        y: park.y + park.height * (padding + Math.random() * (1 - 2 * padding)),
+    };
+}
+
 export function getIntersectionPoints(city) {
     if (!city || !city.config) return [];
     

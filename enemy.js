@@ -2004,6 +2004,21 @@ export default class Enemy {
 
         ctx.restore(); // un-rotate
 
+        // Draw catch ball if in flight (world-space, after un-translate)
+        if (this.ballState && this.ballState.phase === 'inFlight') {
+            const bs = this.ballState;
+            const bx = bs.fromX + (bs.toX - bs.fromX) * bs.progress;
+            const by = bs.fromY + (bs.toY - bs.fromY) * bs.progress;
+            const arcOffset = Math.sin(bs.progress * Math.PI) * 20;
+            ctx.beginPath();
+            ctx.arc(bx, by - arcOffset, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#e8e8e8';
+            ctx.fill();
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
         ctx.restore(); // un-translate
     }
 }

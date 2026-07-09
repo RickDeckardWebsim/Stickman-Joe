@@ -1,5 +1,5 @@
 import { world, enemies, corpses, settledCorpses } from '../world.js';
-import { getSidewalkPatrolPoint, hasLineOfSight, getSidewalkPath, findNearestSidewalk, isOnSidewalk } from '../city.js';
+import { getSidewalkPatrolPoint, hasLineOfSight, getSidewalkPath, findNearestSidewalk, isOnSidewalk, getParkPoint } from '../city.js';
 
 /* @tweakable [Distance from commander for military units to maintain formation.] */
 const COMMANDER_FOLLOW_DISTANCE = 80;
@@ -30,6 +30,14 @@ function lerpAngle(start, end, amount) {
         difference += 2 * Math.PI;
     }
     return start + difference * amount;
+}
+
+function isInPark(x, y, city) {
+    if (!city || !city.grassAreas) return false;
+    for (const g of city.grassAreas) {
+        if (x > g.x && x < g.x + g.width && y > g.y && y < g.y + g.height) return true;
+    }
+    return false;
 }
 
 export function predictTargetPosition(shooter, target) {
@@ -106,6 +114,15 @@ export function decideState(enemy, player, distToPlayer, now) {
                 enemy.conversingWith.conversingWith = null;
                 enemy.conversingWith.state = 'PATROLLING';
                 enemy.conversingWith = null;
+            }
+            // Break any active catch game before fleeing
+            if (enemy.playingCatchWith) {
+                enemy.playingCatchWith.playingCatchWith = null;
+                enemy.playingCatchWith.ballState = null;
+                enemy.playingCatchWith.state = 'PATROLLING';
+                enemy.playingCatchWith.path = [];
+                enemy.playingCatchWith = null;
+                enemy.ballState = null;
             }
             enemy.state = 'FLEEING';
             enemy.fleeTarget = player;
@@ -407,7 +424,14 @@ export function runCivilianAI(enemy, player, now) {
         case 'PATROLLING':
             // The pathing logic is now handled by the main enemy update loop.
             if (!enemy.path || enemy.path.length === 0) {
-                const endPoint = getSidewalkPatrolPoint(world.city);
+                let endPoint;
+                // Social NPCs occasionally head to a park instead of a sidewalk point
+                if (Math.random() < 0.12 * enemy.socialness) {
+                    endPoint = getParkPoint(world.city);
+                }
+                if (!endPoint) {
+                    endPoint = getSidewalkPatrolPoint(world.city);
+                }
                 enemy.path = getSidewalkPath(world.city, enemy.x, enemy.y, endPoint.x, endPoint.y);
                 enemy.pathIndex = 0;
             }
@@ -433,6 +457,33 @@ export function runCivilianAI(enemy, player, now) {
                     }
                 }
             }
+
+            // --- Catch trigger: find a nearby NPC to play catch with in a park ---
+            if (!enemy.playingCatchWith && !enemy.conversingWith &&
+                enemy.socialness > 0.3 && isInPark(enemy.x, enemy.y, world.city) &&
+                Math.random() < 0.01 * enemy.socialness) {
+                for (const other of enemies) {
+                    if (other === enemy || other.health <= 0 || other.isCop ||
+                        other.isHostileActor || other.isZombie) continue;
+                    if (other.playingCatchWith || other.conversingWith) continue;
+                    if (other.state !== 'PATROLLING' && other.state !== 'IDLE') continue;
+                    const dist = Math.hypot(enemy.x - other.x, enemy.y - other.y);
+                    if (dist < 120 && dist > 40 && isInPark(other.x, other.y, world.city)) {
+                        // Start catch session
+                        enemy.playingCatchWith = other;
+                        enemy.playCatchEndTime = now + 8000 + Math.random() * 7000;
+                        enemy.state = 'PLAYING_CATCH';
+                        enemy.path = [];
+                        enemy.ballState = { phase: 'held', progress: 0, fromX: enemy.x, fromY: enemy.y, toX: other.x, toY: other.y, holdUntil: now + 500 };
+                        other.playingCatchWith = enemy;
+                        other.playCatchEndTime = enemy.playCatchEndTime;
+                        other.state = 'PLAYING_CATCH';
+                        other.path = [];
+                        other.ballState = null; // Other NPC waits to receive
+                        break;
+                    }
+                }
+            }
             break;
 
         case 'CONVERSING':
@@ -453,6 +504,65 @@ export function runCivilianAI(enemy, player, now) {
                 const angle = Math.atan2(partner.y - enemy.y, partner.x - enemy.x);
                 enemy.facingAngle = angle;
                 enemy.angle = angle;
+            }
+            break;
+
+        case 'PLAYING_CATCH':
+            currentSpeed = 0;
+            if (!enemy.playingCatchWith || enemy.playingCatchWith.health <= 0 || now > enemy.playCatchEndTime) {
+                // End catch — form/strengthen a relationship
+                if (enemy.playingCatchWith && enemy.playingCatchWith.health > 0) {
+                    // Only gain bond if at least one throw completed
+                    if (enemy.ballState || enemy.playingCatchWith.ballState) {
+                        enemy.addRelationshipStrength(enemy.playingCatchWith.enemyId, 0.25);
+                        enemy.playingCatchWith.addRelationshipStrength(enemy.enemyId, 0.25);
+                    }
+                }
+                enemy.playingCatchWith = null;
+                enemy.ballState = null;
+                enemy.state = 'PATROLLING';
+                enemy.path = [];
+            } else {
+                // Face the partner
+                const partner = enemy.playingCatchWith;
+                const angle = Math.atan2(partner.y - enemy.y, partner.x - enemy.x);
+                enemy.facingAngle = angle;
+                enemy.angle = angle;
+
+                // Update ball state — only the thrower manages the ball
+                if (enemy.ballState) {
+                    const bs = enemy.ballState;
+                    if (bs.phase === 'held') {
+                        if (now >= bs.holdUntil) {
+                            // Throw the ball
+                            bs.phase = 'inFlight';
+                            bs.progress = 0;
+                            bs.fromX = enemy.x;
+                            bs.fromY = enemy.y;
+                            bs.toX = partner.x;
+                            bs.toY = partner.y;
+                        }
+                    } else if (bs.phase === 'inFlight') {
+                        bs.progress += (1 / 60) / 0.6; // ~600ms flight at 60fps
+                        if (bs.progress >= 1) {
+                            // Ball caught — transfer ownership to partner
+                            bs.phase = 'held';
+                            bs.progress = 0;
+                            bs.holdUntil = now + 200 + Math.random() * 300;
+                            bs.fromX = partner.x;
+                            bs.fromY = partner.y;
+                            bs.toX = enemy.x;
+                            bs.toY = enemy.y;
+                            // Give ball to partner
+                            partner.ballState = bs;
+                            enemy.ballState = null;
+                        } else {
+                            // Update target if partner moved
+                            bs.toX = partner.x;
+                            bs.toY = partner.y;
+                        }
+                    }
+                }
             }
             break;
 
