@@ -146,7 +146,15 @@ No interpolation needed — 20Hz updates over a 600ms flight look fluid. Ball st
 
 **New function in `ai/witness.js`:** `witnessFriendHurt(witness, aggressor, victim)`
 
-Called from `enemy.js` when an NPC takes damage, alongside existing `checkCrimeWitnesses`. For each NPC with a relationship to the victim:
+Called from `enemy.js:takeDamage` when an NPC survives a hit. Iterates all NPCs with a relationship to the victim. Called on every hit during sustained combat, so it **must guard against re-entrancy** — once a friend has entered a defensive/fleeing state, subsequent hits to the same victim must not stack further aggressiveness/stress boosts.
+
+**State guard** (mirrors `witnessCrime` early-return pattern at `witness.js:39`):
+```javascript
+if (['CHASING', 'STRAFING', 'FLEEING', 'GRIEVING', 'SEARCHING', 'ATTACKING_CIVILIAN', 'PLAYING_CATCH'].includes(witness.state)) return;
+```
+This prevents: (1) repeated aggressiveness stacking from sustained fire, (2) stress spike accumulation past 100, (3) a fleeing friend re-entering combat on the next hit.
+
+For each NPC that passes the guard and has a relationship to the victim:
 
 ```
 strength = witness.getRelationshipStrength(victim.enemyId)
